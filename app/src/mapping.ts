@@ -2,9 +2,9 @@
 // Ajustez les adresses (B4, H15, etc.) en fonction de votre fichier de facture Excel.
 
 export const CELL_MAPPING: Record<string, string> = {
-  // Champs convention (à adapter aux vraies cellules de la facture)
+  // Champs convention (extraits du fichier Excel)
   "NOM DU CLIENT": "B4",
-  "Nº CONVENTION": "B5",
+  "N° CONVENTION": "B5",
   "OBJET DE LA CONVENTION": "B6",
   SITE: "B7",
   "Date de debut": "B8",
