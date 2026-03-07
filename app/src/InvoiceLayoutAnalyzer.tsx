@@ -25,6 +25,11 @@ export const InvoiceLayoutAnalyzer: React.FC = () => {
         // Analyser la première feuille (FVC)
         const sheetName = "FVC";
         const sheet = workbook.Sheets[sheetName];
+
+        if (!sheet || !sheet["!ref"]) {
+          throw new Error(`Feuille "${sheetName}" introuvable ou référence !ref manquante`);
+        }
+
         const range = XLSX.utils.decode_range(sheet["!ref"]);
         
         output += `Feuille analysée: ${sheetName}\n`;

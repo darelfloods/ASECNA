@@ -2,19 +2,19 @@
 // Ajustez les adresses (B4, H15, etc.) en fonction de votre fichier de facture Excel.
 
 export const CELL_MAPPING: Record<string, string> = {
-  // Champs convention (extraits du fichier Excel)
-  "NOM DU CLIENT": "B4",
-  "N° CONVENTION": "B5",
-  "OBJET DE LA CONVENTION": "B6",
-  SITE: "B7",
-  "Date de debut": "B8",
-  "Date de fin": "B9",
-  "Durée": "B10",
-  MONTANT: "B11",
+  // Nouvelles coordonnées pour la feuille "Bandes" (1er bloc)
+  "NOM DU CLIENT": "F10",
+  "N° CONVENTION": "C15", // Série N°
+  "OBJET DE LA CONVENTION": "B20", // Désignation
+  SITE: "C14",
+  "Date de debut": "A19", // Format fusionné
+  "Date de fin": "A19", // Mappé sur la même cellule
+  "Durée": "A19",
+  MONTANT: "H22",
   // Champs facture : Montant HT = MONTANT, Taxe = 0, Accompte = 0, TTC = HT, Solde = MONTANT
-  "Montant HT": "H12",
-  Taxe: "H13",
-  Accompte: "H14",
-  "Montant TTC": "H15",
-  Solde: "H16",
+  "Montant HT": "B27",
+  Taxe: "D27",
+  Accompte: "F27",
+  "Montant TTC": "H27", // Solde
+  Solde: "H27",
 };

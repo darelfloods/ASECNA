@@ -15,6 +15,10 @@ export const AnalyzeFile: React.FC = () => {
         const firstSheet = workbook.SheetNames[0];
         const sheet = workbook.Sheets[firstSheet];
 
+        if (!sheet || !sheet["!ref"]) {
+          throw new Error("Feuille Excel invalide (référence !ref manquante)");
+        }
+
         let output = `=== Feuille: ${firstSheet} ===\n`;
         output += `Plage: ${sheet["!ref"]}\n\n`;
 

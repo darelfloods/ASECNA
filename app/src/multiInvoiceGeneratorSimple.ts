@@ -16,15 +16,16 @@ export interface ConventionData {
  * Mapping des sites vers les feuilles Excel
  */
 const SITE_TO_SHEET: Record<string, string> = {
-  "MVENGUE": "FVC",
-  "M'VENGUE": "FVC",
-  "M'VENGUE": "FVC",
-  "MVENGE": "FVC",
-  "PORT-GENTIL": "POG",
-  "PORT GENTIL": "POG",
-  "POG": "POG",
-  "LIBREVILLE": "AVOIR",
-  "LBV": "AVOIR",
+  // Par défaut, le nouveau modèle utilise "Bandes" ou "Conventions"
+  "MVENGUE": "Bandes",
+  "M'VENGUE": "Bandes",
+  "MVENGE": "Bandes",
+  "PORT-GENTIL": "Bandes",
+  "PORT GENTIL": "Bandes",
+  "POG": "Bandes",
+  "LIBREVILLE": "Conventions",
+  "LBV": "Conventions",
+  "BITAM": "Conventions",
 };
 
 /**
@@ -34,12 +35,9 @@ function normalizeSite(site: string): string {
   return site.toUpperCase().replace(/['']/g, "'").trim();
 }
 
-/**
- * Obtient le nom de la feuille pour un site donné
- */
 function getSheetNameForSite(site: string): string {
   const normalized = normalizeSite(site);
-  return SITE_TO_SHEET[normalized] || "FVC"; // Par défaut FVC
+  return SITE_TO_SHEET[normalized] || "Bandes"; // Par défaut "Bandes"
 }
 
 /**
@@ -55,29 +53,36 @@ interface DetectedBlock {
  */
 function detectInvoiceBlocks(sheet: ExcelJS.Worksheet): DetectedBlock[] {
   const blocks: DetectedBlock[] = [];
-  
-  // Chercher "Facture N°" dans les 10 premières lignes et toutes les colonnes
-  for (let row = 1; row <= 10; row++) {
-    for (let col = 1; col <= 25; col++) {
+
+  // Dans le modèle 2026, les factures sont empilées verticalement
+  // Chercher "Facture N°" dans les 300 premières lignes, colonnes A ou B (1 ou 2)
+  for (let row = 1; row <= 300; row++) {
+    for (let col = 1; col <= 5; col++) {
       const cell = sheet.getCell(row, col);
       const value = cell.value;
-      
-      if (value && typeof value === "string" && value.match(/Facture\s*N°/i)) {
-        // Vérifier si on n'a pas déjà ce bloc (éviter les doublons)
-        const existingBlock = blocks.find(b => Math.abs(b.col - col) < 5);
+
+      let textValue = "";
+      if (typeof value === "string") textValue = value;
+      else if (value && typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
+        textValue = value.richText.map((r: any) => r.text).join("");
+      }
+
+      if (textValue && textValue.match(/Facture\s*N°/i)) {
+        // Éviter les doublons (même ligne ou ligne très proche)
+        const existingBlock = blocks.find(b => Math.abs(b.factureRow - row) < 5);
         if (!existingBlock) {
           blocks.push({
-            col: Math.max(1, col - 1), // Colonne de départ (1 avant le "Facture N°")
+            col: col, // Colonne exacte du texte "Facture N°..."
             factureRow: row,
           });
         }
       }
     }
   }
-  
-  // Trier les blocs par colonne
-  blocks.sort((a, b) => a.col - b.col);
-  
+
+  // Trier les blocs par ligne (de haut en bas)
+  blocks.sort((a, b) => a.factureRow - b.factureRow);
+
   return blocks;
 }
 
@@ -103,7 +108,7 @@ function setCellValuePreservingStyle(
 ): void {
   const style = preserveCellStyle(cell);
   cell.value = value;
-  
+
   // Restaurer le style
   if (style.font) cell.font = style.font;
   if (style.alignment) cell.alignment = style.alignment;
@@ -123,82 +128,88 @@ function fillInvoiceBlock(
 ): void {
   const baseCol = block.col;
   const baseRow = block.factureRow;
-  
+  const isBandesInfo = sheet.name === "Bandes" || baseCol === 2; // "Bandes" starts at B7
+
   try {
-    // Numéro de facture (sur la ligne détectée, décalé de 1 colonne)
-    const factureCell = sheet.getCell(baseRow, baseCol + 1);
-    setCellValuePreservingStyle(factureCell, `Facture N°${String(invoiceNumber).padStart(3, "0")}`);
-    
-    // Client (généralement 3-4 lignes plus bas, décalé de 4-5 colonnes)
-    const clientCell = sheet.getCell(baseRow + 3, baseCol + 5);
-    const clientStyle = preserveCellStyle(clientCell);
-    clientCell.value = convention["NOM DU CLIENT"];
-    // Préserver le style mais ajouter le wrap si nécessaire
-    if (clientStyle.alignment) {
-      clientCell.alignment = { ...clientStyle.alignment, wrapText: true };
-    } else {
-      clientCell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
-    }
-    if (clientStyle.font) clientCell.font = clientStyle.font;
-    if (clientStyle.border) clientCell.border = clientStyle.border;
-    if (clientStyle.fill) clientCell.fill = clientStyle.fill;
-    
-    // Site (généralement 7-8 lignes plus bas, colonne de base + 1)
-    const siteCell = sheet.getCell(baseRow + 7, baseCol + 1);
-    setCellValuePreservingStyle(siteCell, `Site: ${convention.SITE}`);
-    
-    // Période (généralement 12 lignes plus bas, colonne de base)
-    const periodeCell = sheet.getCell(baseRow + 12, baseCol);
-    const periodeStyle = preserveCellStyle(periodeCell);
-    periodeCell.value = `Du ${convention["Date de debut"]} au ${convention["Date de fin"]}`;
-    if (periodeStyle.alignment) {
-      periodeCell.alignment = { ...periodeStyle.alignment, wrapText: true };
-    }
-    if (periodeStyle.font) periodeCell.font = periodeStyle.font;
-    if (periodeStyle.border) periodeCell.border = periodeStyle.border;
-    if (periodeStyle.fill) periodeCell.fill = periodeStyle.fill;
-    
-    // Désignation / Objet (généralement 13-14 lignes plus bas, colonne de base + 1)
-    const designationCell = sheet.getCell(baseRow + 14, baseCol + 1);
-    const designationStyle = preserveCellStyle(designationCell);
-    designationCell.value = convention["OBJET DE LA CONVENTION"];
-    if (designationStyle.alignment) {
-      designationCell.alignment = { ...designationStyle.alignment, wrapText: true };
-    }
-    if (designationStyle.font) designationCell.font = designationStyle.font;
-    if (designationStyle.border) designationCell.border = designationStyle.border;
-    if (designationStyle.fill) designationCell.fill = designationStyle.fill;
-    
-    // Numéro de convention (généralement 15-16 lignes plus bas, colonne de base + 1)
-    const convCell = sheet.getCell(baseRow + 15, baseCol + 1);
-    setCellValuePreservingStyle(convCell, convention["N° CONVENTION"]);
-    
-    // Montant HT (généralement 15-16 lignes plus bas, colonne de base + 7)
-    const montantCell = sheet.getCell(baseRow + 15, baseCol + 7);
-    const montantStyle = preserveCellStyle(montantCell);
-    
-    // S'assurer que c'est bien un nombre
-    const montantValue = typeof convention.MONTANT === 'number' 
-      ? convention.MONTANT 
-      : parseFloat(String(convention.MONTANT).replace(/[^\d.-]/g, ''));
-    
-    if (!isNaN(montantValue)) {
-      montantCell.value = montantValue;
-      // Restaurer le style incluant le format numérique
-      if (montantStyle.font) montantCell.font = montantStyle.font;
-      if (montantStyle.alignment) montantCell.alignment = montantStyle.alignment;
-      if (montantStyle.border) montantCell.border = montantStyle.border;
-      if (montantStyle.fill) montantCell.fill = montantStyle.fill;
-      if (montantStyle.numFmt) {
-        montantCell.numFmt = montantStyle.numFmt;
-      } else {
-        montantCell.numFmt = '#,##0';
+    // Numéro de facture
+    const textFacture = `Facture N°${String(invoiceNumber).padStart(3, "0")}`;
+    const factureCell = sheet.getCell(baseRow, baseCol);
+    setCellValuePreservingStyle(factureCell, textFacture);
+
+    if (isBandesInfo) {
+      // Configuration "Bandes"
+      // Client en F10 (baseRow+3, col F=6)
+      const clientCell = sheet.getCell(baseRow + 3, 6);
+      setCellValuePreservingStyle(clientCell, convention["NOM DU CLIENT"]);
+
+      // Site en C14 (baseRow+7, col C=3)
+      const siteCell = sheet.getCell(baseRow + 7, 3);
+      setCellValuePreservingStyle(siteCell, convention.SITE);
+
+      // Période en A19 (baseRow+12, col A=1)
+      const periodeCell = sheet.getCell(baseRow + 12, 1);
+      setCellValuePreservingStyle(periodeCell, `Du ${convention["Date de debut"]} au ${convention["Date de fin"]}`);
+
+      // Série (N° Convention) en C15 (baseRow+8, col C=3)
+      const serieCell = sheet.getCell(baseRow + 8, 3);
+      setCellValuePreservingStyle(serieCell, convention["N° CONVENTION"]);
+
+      // Désignation en B20 (baseRow+13, col B=2)
+      const designationCell = sheet.getCell(baseRow + 13, 2);
+      setCellValuePreservingStyle(designationCell, convention["OBJET DE LA CONVENTION"]);
+
+      // Montant en H22 (baseRow+15, col H=8)
+      const montantCell = sheet.getCell(baseRow + 15, 8);
+      const montantStyle = preserveCellStyle(montantCell);
+      const montantValue = typeof convention.MONTANT === 'number'
+        ? convention.MONTANT
+        : parseFloat(String(convention.MONTANT).replace(/[^\d.-]/g, ''));
+      if (!isNaN(montantValue)) {
+        montantCell.value = montantValue;
+        if (montantStyle.font) montantCell.font = montantStyle.font;
+        if (montantStyle.numFmt) montantCell.numFmt = montantStyle.numFmt;
       }
     } else {
-      console.warn(`Montant invalide pour ${convention["NOM DU CLIENT"]}: ${convention.MONTANT}`);
-      montantCell.value = 0;
+      // Configuration "Conventions" (Facture en A4)
+      // Client en F4 (baseRow, col F=6)
+      const clientCell = sheet.getCell(baseRow, 6);
+      setCellValuePreservingStyle(clientCell, convention["NOM DU CLIENT"]);
+
+      // Site en B9 (baseRow+5, col B=2)
+      const siteCell = sheet.getCell(baseRow + 5, 2);
+      setCellValuePreservingStyle(siteCell, `Site: ${convention.SITE}`);
+
+      // Période en A13 (baseRow+9, col A=1)
+      const periodeCell = sheet.getCell(baseRow + 9, 1);
+      setCellValuePreservingStyle(periodeCell, `Du ${convention["Date de debut"]} au ${convention["Date de fin"]}`);
+
+      // Désignation en B14 (baseRow+10, col B=2)
+      const designationCell = sheet.getCell(baseRow + 10, 2);
+      setCellValuePreservingStyle(designationCell, convention["OBJET DE LA CONVENTION"]);
+
+      // N° Convention en B15 (baseRow+11, col B=2)
+      const covCell = sheet.getCell(baseRow + 11, 2);
+      setCellValuePreservingStyle(covCell, convention["N° CONVENTION"]);
+
+      // Montant en H16 (baseRow+12, col H=8)
+      const montantCell = sheet.getCell(baseRow + 12, 8);
+      const montantStyle = preserveCellStyle(montantCell);
+      const montantValue = typeof convention.MONTANT === 'number'
+        ? convention.MONTANT
+        : parseFloat(String(convention.MONTANT).replace(/[^\d.-]/g, ''));
+      if (!isNaN(montantValue)) {
+        montantCell.value = montantValue;
+        if (montantStyle.font) montantCell.font = montantStyle.font;
+        if (montantStyle.numFmt) montantCell.numFmt = montantStyle.numFmt;
+      }
     }
-    
+
+    // Agrandir la colonne H pour l'affichage correct des montants dépassant la largeur
+    const colH = sheet.getColumn(8);
+    if (!colH.width || colH.width < 18) {
+      colH.width = 18;
+    }
+
   } catch (error) {
     console.error("Erreur lors du remplissage du bloc:", error);
   }
@@ -209,18 +220,24 @@ function fillInvoiceBlock(
  */
 export async function generateMultiInvoiceFile(
   conventions: ConventionData[],
-  templatePath: string
+  templateSource: string | ArrayBuffer
 ): Promise<ArrayBuffer> {
   // Charger le template
-  const response = await fetch(templatePath);
-  const arrayBuffer = await response.arrayBuffer();
-  
+  let arrayBuffer: ArrayBuffer;
+  if (typeof templateSource === 'string') {
+    const response = await fetch(templateSource);
+    arrayBuffer = await response.arrayBuffer();
+  } else {
+    arrayBuffer = templateSource; // Utiliser directement le buffer fourni
+  }
+
+  // IMPORTANT: Charger avec l'option pour préserver les images
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(arrayBuffer);
-  
+
   // Grouper les conventions par site
   const conventionsBySite = new Map<string, ConventionData[]>();
-  
+
   for (const convention of conventions) {
     const sheetName = getSheetNameForSite(convention.SITE);
     if (!conventionsBySite.has(sheetName)) {
@@ -228,44 +245,47 @@ export async function generateMultiInvoiceFile(
     }
     conventionsBySite.get(sheetName)!.push(convention);
   }
-  
+
   console.log("Conventions groupées par feuille:", Array.from(conventionsBySite.entries()).map(([k, v]) => `${k}: ${v.length}`));
-  
+
   // Pour chaque feuille, remplir les blocs disponibles
   let globalInvoiceNumber = 1;
-  
+
   for (const [sheetName, siteConventions] of conventionsBySite.entries()) {
     const sheet = workbook.getWorksheet(sheetName);
-    
+
     if (!sheet) {
       console.warn(`Feuille ${sheetName} non trouvée dans le template`);
       continue;
     }
-    
+
+    // Vérifier les images présentes dans la feuille
+    console.log(`Feuille ${sheetName}: ${sheet.getImages ? sheet.getImages().length : 0} images détectées`);
+
     // Détecter les blocs de factures dans cette feuille
     const blocks = detectInvoiceBlocks(sheet);
     console.log(`Feuille ${sheetName}: ${blocks.length} blocs détectés`);
-    
+
     // Remplir autant de blocs que possible
     const nbToFill = Math.min(siteConventions.length, blocks.length);
-    
+
     for (let i = 0; i < nbToFill; i++) {
       console.log(`Remplissage bloc ${i + 1}/${nbToFill} pour ${siteConventions[i]["NOM DU CLIENT"]}`);
       fillInvoiceBlock(sheet, blocks[i], siteConventions[i], globalInvoiceNumber);
       globalInvoiceNumber++;
     }
-    
+
     if (siteConventions.length > blocks.length) {
       console.warn(`${siteConventions.length - blocks.length} conventions non traitées sur la feuille ${sheetName} (pas assez de blocs)`);
     }
   }
-  
+
   // Retourner le fichier généré avec toutes les propriétés préservées
   const buffer = await workbook.xlsx.writeBuffer({
     // Préserver les propriétés du workbook original
     useStyles: true,
     useSharedStrings: true,
   });
-  
+
   return buffer;
 }
