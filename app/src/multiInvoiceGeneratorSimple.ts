@@ -120,20 +120,41 @@ interface ParsedInvoiceNum {
 }
 
 function parseInvoiceNumber(s: string): ParsedInvoiceNum | null {
+  const raw = (s ?? "").trim();
+  if (!raw) return null;
+  // Exclure les placeholders du template (ex: "????")
+  if (/\?/.test(raw)) return null;
+
   // Matches patterns like:
   //   N°2026/023/ASECNA/DGAN/CAF  → prefix="N°2026/", num=23, suffix="/ASECNA/DGAN/CAF"
   //   N°001                        → prefix="N°", num=1, suffix=""
-  const match = s.match(/^(N°[^0-9]*)([0-9]+)(.*)$/i);
-  if (!match) return null;
-  const prefix = match[1];
-  const numStr = match[2];
-  const suffix = match[3];
-  return {
-    prefix,
-    num: parseInt(numStr, 10),
-    numWidth: numStr.length,
-    suffix,
-  };
+  const match = raw.match(/^(N°[^0-9]*)([0-9]+)(.*)$/i);
+  if (match) {
+    const prefix = match[1];
+    const numStr = match[2];
+    const suffix = match[3];
+    return {
+      prefix,
+      num: parseInt(numStr, 10),
+      numWidth: numStr.length,
+      suffix,
+    };
+  }
+
+  // Accepter aussi un numéro "simple" (ex: "7" ou "117")
+  const onlyDigits = raw.match(/^([0-9]+)$/);
+  if (onlyDigits) {
+    const numStr = onlyDigits[1];
+    return {
+      prefix: "N°",
+      num: parseInt(numStr, 10),
+      // Utiliser 3 chiffres comme format standard si l'entrée est courte
+      numWidth: Math.max(3, numStr.length),
+      suffix: "",
+    };
+  }
+
+  return null;
 }
 
 function buildInvoiceNumber(parsed: ParsedInvoiceNum, offset: number): string {
@@ -370,6 +391,28 @@ function getMergedSlaveCells(sheet: ExcelJS.Worksheet): Set<string> {
 }
 
 /**
+ * Si (row,col) appartient à une cellule fusionnée, retourner la cellule "maître"
+ * (top-left) du merge pour que la valeur soit bien prise en compte par ExcelJS.
+ */
+function resolveMergedCellToMaster(
+  sheet: ExcelJS.Worksheet,
+  row: number,
+  col: number
+): { row: number; col: number } {
+  const merges = (sheet as any)._merges || {};
+  for (const mergeKey of Object.keys(merges)) {
+    const mergeRef = merges[mergeKey];
+    if (!mergeRef?.model) continue;
+    const { top, left, bottom, right } = mergeRef.model;
+    const inside =
+      row >= top && row <= bottom && col >= left && col <= right;
+    if (!inside) continue;
+    return { row: top, col: left };
+  }
+  return { row, col };
+}
+
+/**
  * Copie un "bloc" du template (une facture complète) depuis une position source
  * vers une position destination dans la même feuille.
  * IMPORTANT: Cette fonction copie la structure, le style ET les valeurs statiques (labels),
@@ -558,9 +601,14 @@ function fillConventionBlock(
   const fields = blockTemplate.fields;
 
   try {
+    const safeInvoiceNumberStr = /\?/.test(invoiceNumberStr) ? 'N°001' : invoiceNumberStr;
+
     // Numéro de facture
-    const numCell = sheet.getCell(startRow + fields.factureNumber.rowOffset, fields.factureNumber.col);
-    setCellValuePreservingStyle(numCell, `Facture ${invoiceNumberStr}`);
+    const rawNumRow = startRow + fields.factureNumber.rowOffset;
+    const rawNumCol = fields.factureNumber.col;
+    const masterPos = resolveMergedCellToMaster(sheet, rawNumRow, rawNumCol);
+    const numCell = sheet.getCell(masterPos.row, masterPos.col);
+    setCellValuePreservingStyle(numCell, `Facture ${safeInvoiceNumberStr}`);
 
     // Nom du client
     const clientCell = sheet.getCell(startRow + fields.clientName.rowOffset, fields.clientName.col);
@@ -1048,7 +1096,7 @@ export async function generateSingleInvoiceFile(
     : null;
   const invoiceNumStr = parsedNum
     ? buildInvoiceNumber(parsedNum, 0)
-    : (invoiceNumber || `N°001`);
+    : `N°001`;
 
   // Remplir le bloc gauche (premier bloc)
   fillConventionBlock(sheet, FIRST_PAIR_START_ROW, LEFT_BLOCK_TEMPLATE, convention, invoiceNumStr);
@@ -1127,6 +1175,12 @@ export async function generateSingleInvoiceFile(
       return m ? m[0] : null;
     })();
 
+    // r:id attendus par le template (pour aligner header/logo VML)
+    const templateLegacyDrawingRid =
+      convSheetXml.match(/<legacyDrawingHF\b[^>]*\br:id="(rId\d+)"[^>]*\/>/i)?.[1] || null;
+    const templatePageSetupRid =
+      convSheetXml.match(/<pageSetup\b[^>]*\br:id="(rId\d+)"[^>]*\/?>/i)?.[1] || null;
+
     // VML
     const vmlRelM    = convRelsXml
       ? convRelsXml.match(/<Relationship[^>]+Type="[^"]*vmlDrawing[^"]*"[^>]+>/i)
@@ -1169,8 +1223,8 @@ export async function generateSingleInvoiceFile(
         const newVmlNum = ++vmlCounter;
         const newSpid   = sheetNum * 1024 + 1;
         const updatedVml = vmlContent
-          .replace(/<o:idmap v:ext="edit" data="\d+"\/>/i, `<o:idmap v:ext="edit" data="${sheetNum}"/>`)
-          .replace(/o:spid="_x0000_s\d+"/i, `o:spid="_x0000_s${newSpid}"`);
+          .replace(/<o:idmap v:ext="edit" data="\d+"\/>/gi, `<o:idmap v:ext="edit" data="${sheetNum}"/>`)
+          .replace(/o:spid="_x0000_s\d+"/gi, `o:spid="_x0000_s${newSpid}"`);
         genZip.file(`xl/drawings/vmlDrawing${newVmlNum}.vml`, updatedVml);
         if (vmlRelsContent) genZip.file(`xl/drawings/_rels/vmlDrawing${newVmlNum}.vml.rels`, vmlRelsContent);
 
@@ -1180,14 +1234,30 @@ export async function generateSingleInvoiceFile(
           : null;
 
         if (existingRels) {
-          const maxRid = Math.max(0, ...([...existingRels.matchAll(/Id="rId(\d+)"/gi)].map(m => parseInt(m[1]))));
-          ridPrinter = `rId${maxRid + 1}`;
-          ridVml     = `rId${maxRid + 2}`;
+          // Aligner les r:id avec ceux attendus par le template
+          ridVml = templateLegacyDrawingRid || ridVml;
+          ridPrinter = templatePageSetupRid || ridPrinter;
+
           let merged = existingRels;
-          if (printerTarget) merged = merged.replace("</Relationships>",
-            `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/></Relationships>`);
-          merged = merged.replace("</Relationships>",
-            `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/></Relationships>`);
+          // Retirer toute ancienne entrée printer/vml pour éviter chevauchement
+          merged = merged.replace(
+            /<Relationship\b[^>]*Type="[^"]*printerSettings[^"]*"[^>]*\/>/gi,
+            ""
+          );
+          merged = merged.replace(
+            /<Relationship\b[^>]*Type="[^"]*vmlDrawing[^"]*"[^>]*\/>/gi,
+            ""
+          );
+
+          const printerEntry = printerTarget
+            ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/>`
+            : "";
+          const vmlEntry = `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`;
+
+          merged = merged.replace(
+            "</Relationships>",
+            `${printerEntry}${vmlEntry}</Relationships>`
+          );
           genZip.file(genRelFile, merged);
         } else {
           const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
@@ -1382,6 +1452,12 @@ export async function generateMultiInvoiceFile(
     const tRowBreaks     = extractTagBlock(convSheetXml, "rowBreaks");
     const tColBreaks     = extractTagBlock(convSheetXml, "colBreaks");
 
+    // Récupérer les r:id attendus par le template (souvent rId2 pour le logo VML)
+    const templateLegacyDrawingRid =
+      convSheetXml.match(/<legacyDrawingHF\b[^>]*\br:id="(rId\d+)"[^>]*\/>/i)?.[1] || null;
+    const templatePageSetupRid =
+      convSheetXml.match(/<pageSetup\b[^>]*\br:id="(rId\d+)"[^>]*\/?>/i)?.[1] || null;
+
     // printerSettings reference (rId1 dans les rels d'origine)
     const printerRelM   = convRelsXml
       ? convRelsXml.match(/<Relationship[^>]+Type="[^"]*printerSettings[^"]*"[^>]+>/i)
@@ -1457,8 +1533,8 @@ export async function generateMultiInvoiceFile(
         // Mettre à jour l'idmap et le spid pour ce numéro de feuille
         const newSpid = sheetNum * 1024 + 1;
         const updatedVml = vmlContent
-          .replace(/<o:idmap v:ext="edit" data="\d+"\/>/i, `<o:idmap v:ext="edit" data="${sheetNum}"/>`)
-          .replace(/o:spid="_x0000_s\d+"/i, `o:spid="_x0000_s${newSpid}"`);
+          .replace(/<o:idmap v:ext="edit" data="\d+"\/>/gi, `<o:idmap v:ext="edit" data="${sheetNum}"/>`)
+          .replace(/o:spid="_x0000_s\d+"/gi, `o:spid="_x0000_s${newSpid}"`);
         genZip.file(newVmlFile, updatedVml);
         if (vmlRelsContent) genZip.file(newVmlRels, vmlRelsContent);
 
@@ -1469,19 +1545,30 @@ export async function generateMultiInvoiceFile(
           : null;
 
         if (existingGenRels) {
-          const existingRids = [...existingGenRels.matchAll(/Id="rId(\d+)"/gi)]
-            .map(m => parseInt(m[1]));
-          const maxRid = existingRids.length > 0 ? Math.max(...existingRids) : 0;
-          ridPrinter = `rId${maxRid + 1}`;
-          ridVml     = `rId${maxRid + 2}`;
+          // On force les mêmes r:id que le template pour éviter les décalages
+          ridVml = templateLegacyDrawingRid || ridVml;
+          ridPrinter = templatePageSetupRid || ridPrinter;
 
+          // Retirer toute ancienne entrée printer/vml pour éviter les conflits / chevauchements
           let mergedRels = existingGenRels;
-          if (printerTarget) {
-            mergedRels = mergedRels.replace("</Relationships>",
-              `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/></Relationships>`);
-          }
-          mergedRels = mergedRels.replace("</Relationships>",
-            `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/></Relationships>`);
+          mergedRels = mergedRels.replace(
+            /<Relationship\b[^>]*Type="[^"]*printerSettings[^"]*"[^>]*\/>/gi,
+            ""
+          );
+          mergedRels = mergedRels.replace(
+            /<Relationship\b[^>]*Type="[^"]*vmlDrawing[^"]*"[^>]*\/>/gi,
+            ""
+          );
+
+          const printerEntry = printerTarget
+            ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/>`
+            : "";
+          const vmlEntry = `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`;
+
+          mergedRels = mergedRels.replace(
+            "</Relationships>",
+            `${printerEntry}${vmlEntry}</Relationships>`
+          );
           genZip.file(genRelFile, mergedRels);
         } else {
           const printerEntry = printerTarget

@@ -226,38 +226,35 @@ function fixPageFormatB4ToA4(xml: string): string {
     '<w:pgSz w:w="16838" w:h="11906"'
   );
 
-  // 2. Largeurs de colonnes gridCol (pas d'attribut type)
+  // 2. Marges de page (valeurs exactes du template B4)
+  xml = xml.replace(
+    /<w:pgMar w:top="720" w:right="720" w:bottom="510" w:left="720" w:header="680" w:footer="709" w:gutter="0"\/>/,
+    '<w:pgMar w:top="587" w:right="587" w:bottom="416" w:left="587" w:header="555" w:footer="578" w:gutter="0"/>'
+  );
+
+  // 3. Largeurs de colonnes gridCol
   xml = xml.replace(
     /(<w:gridCol w:w=")(\d+)(")/g,
     (_: string, pre: string, val: string, post: string) =>
       `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
   );
 
-  // 3. Largeurs de cellules tcW type="dxa"
+  // 4. Largeurs de cellules tcW type="dxa"
+  // IMPORTANT: une seule regex unifiée pour éviter le double-scaling
   xml = xml.replace(
-    /(<w:tcW[^>]*w:w=")(\d+)("[^>]*w:type="dxa"[^>]*>)/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-  xml = xml.replace(
-    /(<w:tcW w:w=")(\d+)(" w:type="dxa")/g,
+    /(<w:tcW w:w=")(\d+)(" w:type="dxa"\/>)/g,
     (_: string, pre: string, val: string, post: string) =>
       `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
   );
 
-  // 4. Largeurs de tables tblW type="dxa"
+  // 5. Largeurs de tables tblW type="dxa" (valeur non nulle uniquement)
   xml = xml.replace(
-    /(<w:tblW[^>]*w:w=")(\d+)("[^>]*w:type="dxa"[^>]*>)/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-  xml = xml.replace(
-    /(<w:tblW w:w=")(\d+)(" w:type="dxa")/g,
+    /(<w:tblW w:w=")([1-9]\d*)(" w:type="dxa"\/>)/g,
     (_: string, pre: string, val: string, post: string) =>
       `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
   );
 
-  // 5. Positions des tables flottantes tblpX et tblpY (valeurs peuvent être négatives)
+  // 6. Positions des tables flottantes tblpX et tblpY
   xml = xml.replace(
     /(w:tblpX=")(-?\d+)(")/g,
     (_: string, pre: string, val: string, post: string) =>
@@ -269,13 +266,7 @@ function fixPageFormatB4ToA4(xml: string): string {
       `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
   );
 
-  // 6. Marges de page (valeurs exactes du template B4)
-  xml = xml.replace(
-    /<w:pgMar w:top="720" w:right="720" w:bottom="510" w:left="720" w:header="680" w:footer="709" w:gutter="0"\/>/,
-    '<w:pgMar w:top="587" w:right="587" w:bottom="416" w:left="587" w:header="555" w:footer="578" w:gutter="0"/>'
-  );
-
-  // 7. Hauteurs des lignes de tableau (w:trHeight) — indispensable pour que tout tienne sur 1 page A4
+  // 7. Hauteurs des lignes de tableau (w:trHeight)
   xml = xml.replace(
     /(w:trHeight w:val=")(\d+)(")/g,
     (_: string, pre: string, val: string, post: string) =>
@@ -315,7 +306,7 @@ export async function generateBonCommande(data: BonCommandeData): Promise<Blob> 
     documentXml = documentXml.replace(re, `$1$2<w:r>${BOLD_RPR}<w:t xml:space="preserve">${safe}</w:t></w:r>$3`);
   };
 
-  // ── Injecteur pour cases à 1 caractère (supprime l'indent, centre le texte) ─
+  // ── Injecteur pour cases à 1 caractère (préserve l'indent, centre le texte) ─
   const injectChar = (paraId: string, char: string) => {
     if (!char?.trim()) return;
     const safe = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -324,9 +315,10 @@ export async function generateBonCommande(data: BonCommandeData): Promise<Blob> 
       'g'
     );
     documentXml = documentXml.replace(re, (_m: string, open: string, inner: string, close: string) => {
-      const fixed = inner
-        .replace(/<w:ind[^/]*\/>/g, '')
-        .replace(/<\/w:pPr>/, '<w:jc w:val="center"/></w:pPr>');
+      // Préserver TOUTE la pPr existante (avec w:ind) — juste ajouter w:jc center si absent
+      const fixed = inner.includes('<w:jc ')
+        ? inner
+        : inner.replace(/<\/w:pPr>/, '<w:jc w:val="center"/></w:pPr>');
       return `${open}${fixed}<w:r>${BOLD_RPR}<w:t xml:space="preserve">${safe}</w:t></w:r>${close}`;
     });
   };

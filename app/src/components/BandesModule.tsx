@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { generateSingleBandeInvoice, generateMultiBandesInvoices, type BandeFactureData } from '../bandesInvoiceGenerator';
 
 const API = 'http://localhost:3002/api';
 
@@ -537,7 +538,8 @@ function SaisieForm({ onSaved, editFiche, onToast }: { onSaved: () => void; edit
 
 function FichesList({
   onEdit, onFacturer, onRefresh,
-}: { onEdit: (f: Fiche) => void; onFacturer: (ids: string[]) => void; onRefresh: number }) {
+  onFacturerByCompany,
+}: { onEdit: (f: Fiche) => void; onFacturer: (ids: string[]) => void; onFacturerByCompany: (ids: string[]) => void; onRefresh: number }) {
   const [fiches, setFiches] = useState<Fiche[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -588,9 +590,15 @@ function FichesList({
     if (selected.size === 0) { setToast('Sélectionnez au moins une fiche'); return; }
     const selectedFiches = fiches.filter(f => selected.has(f.id));
     const companies = new Set(selectedFiches.map(f => f.compagnie_assistee));
-    if (companies.size > 1) { setToast('Toutes les fiches doivent appartenir à la même compagnie'); return; }
     const alreadyFactured = selectedFiches.filter(f => f.statut === 'facturee');
     if (alreadyFactured.length > 0) { setToast(`${alreadyFactured.length} fiche(s) déjà facturée(s)`); return; }
+
+    if (companies.size > 1) {
+      setToast(`Génération groupée par compagnie (${companies.size})`);
+      onFacturerByCompany(Array.from(selected));
+      return;
+    }
+
     onFacturer(Array.from(selected));
   };
 
@@ -624,7 +632,7 @@ function FichesList({
         <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 13, color: '#1E40AF', fontWeight: 600 }}>{selected.size} fiche(s) sélectionnée(s)</span>
           <button style={{ ...S.btn, ...S.btnPrimary, padding: '6px 16px', fontSize: 13 }} onClick={handleFacturerSelection}>
-            Créer une facture depuis la sélection
+            Créer une facture (ou plusieurs par compagnie)
           </button>
           <button style={{ ...S.btn, ...S.btnSecondary, padding: '6px 12px', fontSize: 13 }} onClick={() => setSelected(new Set())}>
             Annuler
@@ -693,101 +701,41 @@ function FichesList({
   );
 }
 
-// ── Excel generation — basée sur le template BK ───────────────────────────────
+// ── Excel generation — utilise le générateur amélioré ────────────────────────
 
 async function generateFactureExcel(facture: Facture) {
-  // 1. Charger le template depuis public/
-  const res = await fetch("/Facturation bandes d'enregistrements de 2026-V1.xlsx");
-  const arrayBuffer = await res.arrayBuffer();
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(arrayBuffer);
-
-  // 2. Récupérer la feuille BK
-  const ws = wb.worksheets.find(s => s.name.toLowerCase() === 'bk');
-  if (!ws) throw new Error('Feuille BK introuvable dans le template');
-
-  // 3. Formater les dates pour la période (DD/MM sans année, DD/MM/YYYY pour fin)
-  const fmtShort = (iso: string) => {
-    if (!iso) return '';
-    const [, m, d] = iso.split('-');
-    return `${d}/${m}`;
+  const factureData: BandeFactureData = {
+    numero_facture: facture.numero_facture,
+    date_facture: facture.date_facture,
+    compagnie: facture.compagnie,
+    adresse_compagnie: facture.adresse_compagnie,
+    ville_compagnie: facture.ville_compagnie,
+    site: facture.site,
+    serie_bandes: facture.serie_bandes,
+    periode_debut: facture.periode_debut,
+    periode_fin: facture.periode_fin,
+    nombre_heures: facture.nombre_heures,
+    tarif_horaire: facture.tarif_horaire,
+    total_heures: facture.total_heures,
+    nombre_annonces: facture.nombre_annonces,
+    tarif_annonce: facture.tarif_annonce,
+    total_annonces: facture.total_annonces,
+    montant_ht: facture.montant_ht,
+    total_pax: facture.total_pax,
+    taxes: facture.taxes,
+    acompte: facture.acompte,
+    solde: facture.solde,
+    montant_en_lettres: facture.montant_en_lettres,
   };
-  const fmtFull = (iso: string) => {
-    if (!iso) return '';
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-  };
-  const periodeStr = (facture.periode_debut && facture.periode_fin)
-    ? `Du ${fmtShort(facture.periode_debut)} au ${fmtFull(facture.periode_fin)}`
-    : '';
 
-  // 4. Remplir le bloc 1 (cols A–H, lignes 1–39) — garder tous les styles du template
-  ws.getCell('B4').value = `Facture N°${facture.numero_facture}`;
+  const buffer = await generateSingleBandeInvoice(
+    factureData,
+    "/Facturation bandes d'enregistrements de 2026-V1.xlsx"
+  );
 
-  // Compagnie (F7:H7 mergé)
-  ws.getCell('F7').value = facture.compagnie;
-  // "Libreville, le {date}" en A8
-  ws.getCell('A8').value = `Libreville, le ${new Date(facture.date_facture + 'T00:00:00').toLocaleDateString('fr-FR')}`;
-  // Adresse compagnie (F8:H8 mergé)
-  ws.getCell('F8').value = facture.adresse_compagnie || '';
-  // Ville compagnie (F9:H9 mergé)
-  ws.getCell('F9').value = facture.ville_compagnie || facture.site;
-
-  // Site et Série
-  ws.getCell('C11').value = facture.site;
-  ws.getCell('B12').value = `Série N°:${facture.serie_bandes || ''}`;
-
-  // Période (A16 mergé A16:A22)
-  ws.getCell('A16').value = periodeStr;
-
-  // Données tableau ligne 19
-  ws.getCell('B19').value = facture.nombre_heures;
-  ws.getCell('C19').value = facture.tarif_horaire;
-  ws.getCell('D19').value = facture.total_heures;
-  // Annonces : afficher 0 si pas d'annonces (le template gère le "-" via la valeur 0)
-  ws.getCell('E19').value = facture.nombre_annonces;
-  ws.getCell('F19').value = facture.nombre_annonces === 0 ? 0 : facture.tarif_annonce;
-  ws.getCell('G19').value = facture.total_annonces;
-  ws.getCell('H19').value = facture.montant_ht;
-
-  // Totaux ligne 24
-  ws.getCell('A24').value = facture.total_pax;
-  ws.getCell('B24').value = facture.montant_ht;
-  ws.getCell('D24').value = facture.taxes;
-  ws.getCell('F24').value = facture.acompte;
-  ws.getCell('G24').value = facture.montant_ht;
-  ws.getCell('H24').value = facture.solde;
-
-  // Montant en lettres (A27 mergé A27:G27)
-  ws.getCell('A27').value = facture.montant_en_lettres;
-
-  // 5. Effacer le bloc 2 (cols I–P, lignes 1–39) — données de l'exemple
-  const bloc2DataCells = [
-    'J4',                         // N° facture 2
-    'N7',                         // Compagnie 2
-    'I8', 'N8',                   // "Libreville" + adresse 2
-    'N9',                         // Ville 2
-    'K11', 'J12',                 // Site + Série 2
-    'I16',                        // Période 2
-    'J19', 'K19', 'L19', 'M19', 'N19', 'O19', 'P19',  // Données tableau 2
-    'I23', 'J23', 'L23', 'N23', 'O23', 'P23',          // Headers totaux 2
-    'I24', 'J24', 'L24', 'N24', 'O24', 'P24',          // Totaux 2
-    'I26', 'I27',                 // Certifié + montant lettres 2
-  ];
-  for (const addr of bloc2DataCells) {
-    try { ws.getCell(addr).value = null; } catch { /* cellule protégée */ }
-  }
-
-  // 6. Effacer les blocs 3 et 4 (lignes 41–79)
-  for (let r = 41; r <= ws.rowCount; r++) {
-    ws.getRow(r).eachCell({ includeEmpty: false }, cell => {
-      try { cell.value = null; } catch { /* skip */ }
-    });
-  }
-
-  // 7. Télécharger
-  const buf = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const blob = new Blob([buffer], { 
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  });
   saveAs(blob, `Facture-Bandes-${facture.numero_facture}-${facture.compagnie}.xlsx`);
 }
 
@@ -803,6 +751,7 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
   const [form, setForm] = useState({
     date_facture: today(),
     compagnie: defaultComp,
+    numero_facture: '',
     adresse_compagnie: '',
     ville_compagnie: '',
     site: defaultSite,
@@ -817,6 +766,7 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
     acompte: 0,
     total_pax: totalPax,
   });
+  const [draftFacture, setDraftFacture] = useState<{ id: string; numero_facture: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [generatingExcel, setGeneratingExcel] = useState(false);
@@ -829,23 +779,32 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
   const solde = montant_ht + form.taxes - form.acompte;
   const montant_en_lettres = numberToWords(solde);
 
-  const buildPayload = (statut: string) => ({
-    ...form,
-    fiches_ids: ficheIds,
-    total_heures,
-    total_annonces,
-    montant_ht,
-    solde,
-    montant_en_lettres,
-    statut,
-  });
+  const buildPayload = (statut: string) => {
+    const payload: Record<string, unknown> = {
+      ...form,
+      fiches_ids: ficheIds,
+      total_heures,
+      total_annonces,
+      montant_ht,
+      solde,
+      montant_en_lettres,
+      statut,
+    };
+    // Ne pas envoyer un placeholder vide au backend
+    if (!String(form.numero_facture ?? '').trim()) delete payload.numero_facture;
+    return payload;
+  };
 
   const handleSave = async (statut: string) => {
     if (!form.compagnie) { setToast('Compagnie obligatoire'); return; }
     setSaving(true);
     try {
-      const data = await apiFetch('POST', '/factures-bandes', buildPayload(statut));
+      const data = draftFacture?.id
+        ? await apiFetch('PUT', `/factures-bandes/${draftFacture.id}`, buildPayload(statut))
+        : await apiFetch('POST', '/factures-bandes', buildPayload(statut));
       if (data.success) {
+        const newId = data.id ?? (data as any)._id ?? (data as any).facture?.id;
+        if (newId && data.numero_facture) setDraftFacture({ id: newId, numero_facture: data.numero_facture });
         setToast(`Facture N°${data.numero_facture} enregistrée`);
         onSaved();
       } else setToast('Erreur: ' + data.error);
@@ -857,9 +816,26 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
     if (!form.compagnie) { setToast('Compagnie obligatoire'); return; }
     setGeneratingExcel(true);
     try {
+      // Si aucun brouillon n'existe encore, on le crée d'abord pour obtenir un numéro réel
+      let numero_facture_final = String(form.numero_facture ?? '').trim();
+      let draftId = draftFacture?.id;
+
+      if (!numero_facture_final || /\?/.test(numero_facture_final)) {
+        const data = await apiFetch('POST', '/factures-bandes', buildPayload('brouillon'));
+        if (!data.success) throw new Error(data.error || 'Erreur serveur');
+        draftId = data.id ?? (data as any)._id;
+        numero_facture_final = data.numero_facture;
+        if (draftId && numero_facture_final) {
+          setDraftFacture({ id: draftId, numero_facture: numero_facture_final });
+          setForm(p => ({ ...p, numero_facture: numero_facture_final }));
+        }
+      }
+
       const tempFacture: Facture = {
-        id: 'preview', numero_facture: '????',
-        ...form, fiches_ids: ficheIds,
+        id: draftId ?? 'preview',
+        numero_facture: numero_facture_final || 'N/A',
+        ...form,
+        fiches_ids: ficheIds,
         total_heures, total_annonces, montant_ht, solde, montant_en_lettres,
         statut: 'brouillon',
       };
@@ -885,6 +861,15 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
             <select style={S.select} value={form.compagnie} onChange={e => set('compagnie', e.target.value)}>
               {COMPAGNIES.map(c => <option key={c}>{c}</option>)}
             </select>
+          </div>
+          <div>
+            <label style={S.label}>N° facture</label>
+            <input
+              style={S.input}
+              value={form.numero_facture}
+              onChange={e => set('numero_facture', e.target.value)}
+              placeholder="Auto à la génération"
+            />
           </div>
           <div>
             <label style={S.label}>Adresse compagnie (BP + Tél)</label>
@@ -988,6 +973,198 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
   );
 }
 
+// ── Module C bis: Facturation multi-compagnies ───────────────────────────
+function FacturationMultiCompaniesForm({
+  ficheIds,
+  fiches,
+  onSaved,
+}: {
+  ficheIds: string[];
+  fiches: Fiche[];
+  onSaved: () => void;
+}) {
+  const selectedFiches = fiches.filter(f => ficheIds.includes(f.id));
+
+  const [form, setForm] = useState({
+    date_facture: today(),
+    adresse_compagnie: '',
+    ville_compagnie: '',
+    serie_bandes: '',
+    periode_debut: selectedFiches.length > 0 ? selectedFiches[selectedFiches.length - 1].date_saisie : today(),
+    periode_fin: selectedFiches.length > 0 ? selectedFiches[0].date_saisie : today(),
+    tarif_horaire: 10000,
+    nombre_annonces: 0,
+    tarif_annonce: 3500,
+    taxes: 0,
+    acompte: 0,
+  });
+
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState('');
+
+  const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Fiche[]>();
+    for (const f of selectedFiches) {
+      const key = `${f.compagnie_assistee}__${f.site}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(f);
+    }
+
+    return Array.from(map.entries()).map(([key, arr]) => {
+      const [compagnie, site] = key.split('__');
+      const totalH = arr.reduce((s, f) => s + (f.duree_heures_decimal || 0), 0);
+      const nombre_heures = Math.round(totalH * 2) / 2;
+      const totalPax = arr.reduce((s, f) => s + (f.pax_arrives || 0) + (f.pax_departs || 0) + (f.pax_transit || 0), 0);
+      return {
+        compagnie,
+        site,
+        ficheIds: arr.map(x => x.id),
+        ficheCount: arr.length,
+        nombre_heures,
+        totalPax,
+      };
+    });
+  }, [selectedFiches]);
+
+  const handleSaveMulti = async (statut: string) => {
+    if (selectedFiches.length === 0) { setToast('Aucune fiche sélectionnée'); return; }
+    if (groups.length === 0) { setToast('Aucune facture à générer'); return; }
+
+    setSaving(true);
+    setToast('');
+    try {
+      let createdCount = 0;
+      for (const g of groups) {
+        const total_heures = g.nombre_heures * form.tarif_horaire;
+        const total_annonces = form.nombre_annonces * form.tarif_annonce;
+        const montant_ht = total_heures + total_annonces;
+        const solde = montant_ht + form.taxes - form.acompte;
+        const montant_en_lettres = numberToWords(solde);
+
+        const payload = {
+          date_facture: form.date_facture,
+          compagnie: g.compagnie,
+          adresse_compagnie: form.adresse_compagnie,
+          ville_compagnie: form.ville_compagnie,
+          site: g.site,
+          serie_bandes: form.serie_bandes,
+          periode_debut: form.periode_debut,
+          periode_fin: form.periode_fin,
+          nombre_heures: g.nombre_heures,
+          tarif_horaire: form.tarif_horaire,
+          total_heures,
+          nombre_annonces: form.nombre_annonces,
+          tarif_annonce: form.tarif_annonce,
+          total_annonces,
+          montant_ht,
+          taxes: form.taxes,
+          acompte: form.acompte,
+          solde,
+          total_pax: g.totalPax,
+          montant_en_lettres,
+          fiches_ids: g.ficheIds,
+          statut,
+        };
+
+        const data = await apiFetch('POST', '/factures-bandes', payload);
+        if (!data.success) throw new Error(data.error || 'Erreur serveur');
+        createdCount++;
+      }
+
+      setToast(`✅ ${createdCount} facture(s) générée(s)`);
+      onSaved();
+    } catch (err: any) {
+      setToast('Erreur: ' + (err?.message || 'Erreur serveur'));
+      console.error('[FacturationMultiCompaniesForm] Erreur:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
+      {toast && <Toast msg={toast} onClose={() => setToast('')} />}
+
+      <div style={S.section}>
+        <div style={S.sectionTitle}>Facturation multi-compagnies</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={S.label}>Date de facture</label>
+            <input style={S.input} type="date" value={form.date_facture} onChange={e => set('date_facture', e.target.value)} />
+          </div>
+          <div>
+            <label style={S.label}>Série N° des bandes</label>
+            <input style={S.input} value={form.serie_bandes} onChange={e => set('serie_bandes', e.target.value)} placeholder="ex: 0001451-0001491" />
+          </div>
+          <div>
+            <label style={S.label}>Adresse compagnie (BP + Tél)</label>
+            <input style={S.input} value={form.adresse_compagnie} onChange={e => set('adresse_compagnie', e.target.value)} placeholder="ex: BP:13025 Tél:011 44 40 15" />
+          </div>
+          <div>
+            <label style={S.label}>Ville compagnie</label>
+            <input style={S.input} value={form.ville_compagnie} onChange={e => set('ville_compagnie', e.target.value)} placeholder="ex: Oyem" />
+          </div>
+          <div>
+            <label style={S.label}>Période — Du</label>
+            <input style={S.input} type="date" value={form.periode_debut} onChange={e => set('periode_debut', e.target.value)} />
+          </div>
+          <div>
+            <label style={S.label}>Période — Au</label>
+            <input style={S.input} type="date" value={form.periode_fin} onChange={e => set('periode_fin', e.target.value)} />
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, padding: '10px 14px', background: '#EFF6FF', borderRadius: 6, fontSize: 13, color: '#1E40AF' }}>
+          {groups.map(g => (
+            <div key={`${g.compagnie}__${g.site}`} style={{ marginBottom: 6 }}>
+              <b>{g.compagnie}</b> — {g.site} : {g.ficheCount} fiche(s) • {g.nombre_heures}h • {g.totalPax} PAX
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.section}>
+        <div style={S.sectionTitle}>Paramètres communs</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={S.label}>Tarif horaire</label>
+            <input style={S.input} type="number" value={form.tarif_horaire} onChange={e => set('tarif_horaire', parseInt(e.target.value) || 0)} />
+          </div>
+          <div>
+            <label style={S.label}>Nbre annonces point "I"</label>
+            <input style={S.input} type="number" min="0" value={form.nombre_annonces} onChange={e => set('nombre_annonces', parseInt(e.target.value) || 0)} />
+          </div>
+          <div>
+            <label style={S.label}>Tarif annonce</label>
+            <input style={S.input} type="number" value={form.tarif_annonce} onChange={e => set('tarif_annonce', parseInt(e.target.value) || 0)} />
+          </div>
+          <div>
+            <label style={S.label}>Taxes</label>
+            <input style={S.input} type="number" value={form.taxes} onChange={e => set('taxes', parseInt(e.target.value) || 0)} />
+          </div>
+          <div>
+            <label style={S.label}>Acompte</label>
+            <input style={S.input} type="number" value={form.acompte} onChange={e => set('acompte', parseInt(e.target.value) || 0)} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <button style={{ ...S.btn, ...S.btnPrimary }} onClick={() => handleSaveMulti('brouillon')} disabled={saving}>
+          {saving ? 'Enregistrement...' : 'Enregistrer en brouillon'}
+        </button>
+        <button style={{ ...S.btn, ...S.btnGreen }} onClick={() => handleSaveMulti('emise')} disabled={saving}>
+          Marquer comme émise
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Module D: Bordereau ───────────────────────────────────────────────────────
 
 async function generateBordereauExcel(factures: Facture[]) {
@@ -1040,6 +1217,8 @@ async function generateBordereauExcel(factures: Facture[]) {
 function Bordereau() {
   const [factures, setFactures] = useState<Facture[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [generatingMulti, setGeneratingMulti] = useState(false);
   const [toast, setToast] = useState('');
   const [stats, setStats] = useState<{ fichesTotal: number; fichesSaisie: number; facturesMois: number; facturesAttente: number } | null>(null);
 
@@ -1070,6 +1249,74 @@ function Bordereau() {
     load();
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === factures.length) setSelected(new Set());
+    else setSelected(new Set(factures.map(f => f.id)));
+  };
+
+  const handleGenerateMulti = async () => {
+    if (selected.size === 0) {
+      setToast('Sélectionnez au moins une facture');
+      return;
+    }
+
+    setGeneratingMulti(true);
+    try {
+      const selectedFactures = factures.filter(f => selected.has(f.id));
+      const facturesData: BandeFactureData[] = selectedFactures.map(facture => ({
+        numero_facture: facture.numero_facture,
+        date_facture: facture.date_facture,
+        compagnie: facture.compagnie,
+        adresse_compagnie: facture.adresse_compagnie || '',
+        ville_compagnie: facture.ville_compagnie || '',
+        site: facture.site,
+        serie_bandes: facture.serie_bandes,
+        periode_debut: facture.periode_debut,
+        periode_fin: facture.periode_fin,
+        nombre_heures: facture.nombre_heures,
+        tarif_horaire: facture.tarif_horaire,
+        total_heures: facture.total_heures,
+        nombre_annonces: facture.nombre_annonces,
+        tarif_annonce: facture.tarif_annonce,
+        total_annonces: facture.total_annonces,
+        montant_ht: facture.montant_ht,
+        total_pax: facture.total_pax,
+        taxes: facture.taxes,
+        acompte: facture.acompte,
+        solde: facture.solde,
+        montant_en_lettres: facture.montant_en_lettres,
+      }));
+
+      const buffer = await generateMultiBandesInvoices(
+        facturesData,
+        "/Facturation bandes d'enregistrements de 2026-V1.xlsx"
+      );
+
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      saveAs(blob, `Factures-Bandes-${dateStr}.xlsx`);
+
+      setToast(`${selected.size} facture(s) générée(s) par site`);
+      setSelected(new Set());
+    } catch (err) {
+      console.error('Erreur génération multi:', err);
+      setToast('Erreur lors de la génération');
+    }
+    setGeneratingMulti(false);
+  };
+
   return (
     <div style={{ padding: 24 }}>
       {toast && <Toast msg={toast} onClose={() => setToast('')} />}
@@ -1091,6 +1338,18 @@ function Bordereau() {
         </div>
       )}
 
+      {selected.size > 0 && (
+        <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 13, color: '#1E40AF', fontWeight: 600 }}>{selected.size} facture(s) sélectionnée(s)</span>
+          <button style={{ ...S.btn, ...S.btnPrimary, padding: '6px 16px', fontSize: 13 }} onClick={handleGenerateMulti} disabled={generatingMulti}>
+            {generatingMulti ? 'Génération...' : '📥 Générer un fichier groupé par compagnie'}
+          </button>
+          <button style={{ ...S.btn, ...S.btnSecondary, padding: '6px 12px', fontSize: 13 }} onClick={() => setSelected(new Set())}>
+            Annuler
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 16, color: '#1A2B4A' }}>
           Bordereau — {factures.length} facture(s) — Total : {fmt(total)} FCFA
@@ -1107,6 +1366,10 @@ function Bordereau() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
+                <th style={{ ...S.tableHeader, width: 40 }}>
+                  <input type="checkbox" checked={selected.size === factures.length && factures.length > 0}
+                    onChange={toggleAll} />
+                </th>
                 {['N° Facture','Date','Compagnie','Site','Période','H. Comptoirs','PAX','Montant HT','Statut','Actions'].map(h => (
                   <th key={h} style={S.tableHeader}>{h}</th>
                 ))}
@@ -1117,6 +1380,9 @@ function Bordereau() {
                 <tr><td colSpan={10} style={{ ...S.tableCell, textAlign: 'center', color: '#94A3B8', padding: 32 }}>Aucune facture</td></tr>
               ) : factures.map((f, i) => (
                 <tr key={f.id} style={{ background: i % 2 === 0 ? '#fff' : '#F8FAFC' }}>
+                  <td style={S.tableCell}>
+                    <input type="checkbox" checked={selected.has(f.id)} onChange={() => toggleSelect(f.id)} />
+                  </td>
                   <td style={{ ...S.tableCell, fontWeight: 700, color: '#1A2B4A' }}>{f.numero_facture}</td>
                   <td style={S.tableCell}>{new Date(f.date_facture).toLocaleDateString('fr-FR')}</td>
                   <td style={S.tableCell}>{f.compagnie}</td>
@@ -1150,7 +1416,7 @@ function Bordereau() {
 // ── Main BandesModule ─────────────────────────────────────────────────────────
 
 export function BandesModule() {
-  const [subTab, setSubTab] = useState<'saisie' | 'fiches' | 'facturation' | 'bordereau'>('saisie');
+  const [subTab, setSubTab] = useState<'saisie' | 'fiches' | 'facturation' | 'facturation_multi' | 'bordereau'>('saisie');
   const [editFiche, setEditFiche] = useState<Fiche | null>(null);
   const [ficheIdsToFacture, setFicheIdsToFacture] = useState<string[]>([]);
   const [allFiches, setAllFiches] = useState<Fiche[]>([]);
@@ -1177,6 +1443,11 @@ export function BandesModule() {
     setSubTab('facturation');
   };
 
+  const handleFacturerByCompany = (ids: string[]) => {
+    setFicheIdsToFacture(ids);
+    setSubTab('facturation_multi');
+  };
+
   const handleFactureSaved = () => {
     setRefreshKey(k => k + 1);
     setFicheIdsToFacture([]);
@@ -1187,6 +1458,7 @@ export function BandesModule() {
     { key: 'saisie', label: editFiche ? 'Modifier fiche' : 'Saisie fiche' },
     { key: 'fiches', label: 'Fiches' },
     { key: 'facturation', label: 'Facturation' },
+    { key: 'facturation_multi', label: 'Facturation multi-compagnies' },
     { key: 'bordereau', label: 'Bordereau' },
   ] as const;
 
@@ -1211,8 +1483,9 @@ export function BandesModule() {
       </div>
 
       {subTab === 'saisie' && <SaisieForm onSaved={handleSaved} editFiche={editFiche} onToast={setGlobalToast} />}
-      {subTab === 'fiches' && <FichesList onEdit={handleEdit} onFacturer={handleFacturer} onRefresh={refreshKey} />}
+      {subTab === 'fiches' && <FichesList onEdit={handleEdit} onFacturer={handleFacturer} onFacturerByCompany={handleFacturerByCompany} onRefresh={refreshKey} />}
       {subTab === 'facturation' && <FacturationForm ficheIds={ficheIdsToFacture} fiches={allFiches} onSaved={handleFactureSaved} />}
+      {subTab === 'facturation_multi' && <FacturationMultiCompaniesForm ficheIds={ficheIdsToFacture} fiches={allFiches} onSaved={handleFactureSaved} />}
       {subTab === 'bordereau' && <Bordereau />}
     </div>
   );
