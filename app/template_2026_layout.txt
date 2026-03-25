@@ -1,0 +1,584 @@
+=== WORKBOOK INFO ===
+Sheets: Bandes, Conventions, Recap
+
+
+=== SHEET: "Bandes" ===
+Rows: 46, Columns: 9
+
+Merged cells (first 60):
+  A1:I1
+  A2:I2
+  B26:C26
+  B27:C27
+  D45:F45
+  F10:H10
+  F11:H11
+  F12:H12
+  B18:G18
+  A19:A25
+  B20:D20
+  E20:G20
+  A4:I4
+  D41:F41
+  D44:F44
+
+--- Non-empty cells (rows 1-35) ---
+  A1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  B1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  C1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  D1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  E1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  F1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  G1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  H1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  I1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  A2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  B2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  C2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  D2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  E2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  F2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  G2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  H2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  I2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  A4: Facture
+  B4: Facture
+  C4: Facture
+  D4: Facture
+  E4: Facture
+  F4: Facture
+  G4: Facture
+  H4: Facture
+  I4: Facture
+  B7: Facture N°152
+  F10: HELI-UNION
+  G10: HELI-UNION
+  H10: HELI-UNION
+  A11: Libreville, le 
+  D11: Doit :
+  G11: null
+  H11: null
+  F12: Libreville
+  G12: Libreville
+  H12: Libreville
+  B14: Site:
+  C14: PORT-GENTIL
+  B15: Série N°:
+  C15: 0001451-0001491
+  A18: PERIODE
+  B18: DESIGNATION
+  C18: DESIGNATION
+  D18: DESIGNATION
+  E18: DESIGNATION
+  F18: DESIGNATION
+  G18: DESIGNATION
+  H18: MONTANT
+  A19: Du 11/11 au 28/11/2025
+  A20: Du 11/11 au 28/11/2025
+  B20: Usage des Comptoirs
+  C20: Usage des Comptoirs
+  D20: Usage des Comptoirs
+  E20: Annonces point "I"
+  F20: Annonces point "I"
+  G20: Annonces point "I"
+  A21: Du 11/11 au 28/11/2025
+  B21: Nbre H
+  C21: CU
+  D21: Total 1
+  E21: Nbre Ann
+  F21: CU
+  G21: Total 2
+  A22: Du 11/11 au 28/11/2025
+  B22: 42
+  C22: 10000
+  D22: [Formula] B22*C22 = 420000
+  E22: 0
+  F22: 3500
+  G22: [Formula] +E22*F22 = undefined
+  H22: [Formula] (+D22+G22) = 420000
+  A23: Du 11/11 au 28/11/2025
+  A24: Du 11/11 au 28/11/2025
+  A25: Du 11/11 au 28/11/2025
+  A26: pax
+  B26: Montant HT
+  C26: Montant HT
+  D26: TAXES
+  F26: ACOMPTE
+  G26: Montant HT
+  H26: SOLDE
+  A27: 226
+  B27: [Formula] +H22 = 420000
+  C27: [Formula] +H22 = 420000
+  D27: [Formula] 0 = undefined
+  F27: [Formula] 0 = undefined
+  G27: [Formula] +H22 = 420000
+  H27: [Formula] +H22 = 420000
+  A29: [RichText] Certifie sincère et veritable la présente facture d'avoir s'élèvant à la somme de: 
+  A30: QUATRE CENT VINGT  MILLE (420 000 )Francs.CFA
+  A31: Mode de règlement:
+  A32: [RichText] Numéraire ou virement bancaire: cpte ASECNA N° 40002 00005 56461893000 93  UGB Libreville
+  A33: [RichText] Chèques à libeller au nom de: ASECNA Activités Aéronautiques Nationales du Gabon
+  A34: [RichText] Échéance de règlement: 30 jours à compter de la date d'émission 
+
+
+=== SHEET: "Conventions" ===
+Rows: 35, Columns: 10
+
+Merged cells (first 60):
+  B19:C19
+  B20:C20
+  E35:G35
+  A1:I1
+  A2:I2
+  F5:H5
+  F6:H6
+  B12:G12
+  A13:A18
+  B14:G14
+  B15:G15
+  B16:G16
+  C17:F17
+
+--- Non-empty cells (rows 1-35) ---
+  A1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  B1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  C1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  D1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  E1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  F1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  G1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  H1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  I1: [RichText] Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar                                       Siège Social : 32-38 Av. Jean Jaurès DAKAR B.P. 3144-Tél +221.33.823.46.54-site web : www.asecna.aero
+  A2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  B2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  C2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  D2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  E2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  F2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  G2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  H2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  I2: [RichText] Délégation aux Activités Aéronautiques Nationales du Gabon
+BP: 2252 Libreville, Tél.65.04.28.63
+  A4: Facture N°146
+  F4:         Laurette Josette ASSENG EKANKANG
+  B5: Libreville, le 
+  E5: Doit :
+  F5: Tél:077 09 62 66/ 066 09 62 66
+  G5: Tél:077 09 62 66/ 066 09 62 66
+  H5: Tél:077 09 62 66/ 066 09 62 66
+  F6: BITAM
+  G6: BITAM
+  H6: BITAM
+  B9: Site: BITAM 
+  A12: PERIODE
+  B12: DESIGNATION
+  C12: DESIGNATION
+  D12: DESIGNATION
+  E12: DESIGNATION
+  F12: DESIGNATION
+  G12: DESIGNATION
+  H12: MONTANT
+  A13: Du 01/12 au 31/12/2025
+  A14: Du 01/12 au 31/12/2025
+  B14: CONVENTION DOMANIALE/BAIL
+  C14: CONVENTION DOMANIALE/BAIL
+  D14: CONVENTION DOMANIALE/BAIL
+  E14: CONVENTION DOMANIALE/BAIL
+  F14: CONVENTION DOMANIALE/BAIL
+  G14: CONVENTION DOMANIALE/BAIL
+  A15: Du 01/12 au 31/12/2025
+  B15: N°OB/004/ECEP/2025
+  C15: N°OB/004/ECEP/2025
+  D15: N°OB/004/ECEP/2025
+  E15: N°OB/004/ECEP/2025
+  F15: N°OB/004/ECEP/2025
+  G15: N°OB/004/ECEP/2025
+  A16: Du 01/12 au 31/12/2025
+  C16: null
+  D16: null
+  E16: null
+  F16: null
+  G16: null
+  H16: 400000
+  A17: Du 01/12 au 31/12/2025
+  D17: null
+  E17: null
+  F17: null
+  A18: Du 01/12 au 31/12/2025
+  A19: DEVISE
+  B19: Montant HT
+  C19: Montant HT
+  D19: TAXES
+  F19: ACOMPTE
+  G19: Montant TTC
+  H19: SOLDE
+  A20: FCFA
+  B20: [Formula] +H16 = 400000
+  C20: [Formula] +H16 = 400000
+  D20: [Formula] 0 = undefined
+  F20: [Formula] 0 = undefined
+  G20: [Formula] +B20 = 400000
+  H20: [Formula] +H16 = 400000
+  A22: Certifie sincère et veritable la présente facture s'élèvant à la somme de: 
+  A23: QUATRE CENT MILLE  (400 000) FRANCS.CFA
+  A24: Mode de règlement:
+  A25: [RichText] Numéraire ou virement bancaire: cpte ASECNA N° 40002 00005 564161893000 93  UGB Libreville
+  A26: Chèques à libeller au nom de: ASECNA Activités Aéronautiques Nationales du Gabon
+  A27: Échéance de règlement: 30 jours à compter de la date d'émission 
+  E30: Le Délégué du Directeur Général de l'ASECNA
+  E31: pour  la Gestion des Activités Aéronautiques 
+  E32:                                                                     Nationales du Gabon par intérim
+  E35: [RichText]              Brice Thierry Arist SOKI
+  F35: [RichText]              Brice Thierry Arist SOKI
+  G35: [RichText]              Brice Thierry Arist SOKI
+
+
+=== SHEET: "Recap" ===
+Rows: 3618, Columns: 20
+
+Merged cells (first 60):
+  N10:O10
+  A12:A13
+  B12:B13
+  C12:C13
+  D12:D13
+  E12:E13
+  A8:G8
+  H8:O8
+  A10:A11
+  B10:B11
+  C10:C11
+  D10:D11
+  E10:E11
+  F10:F11
+  H10:H11
+  I10:I11
+  M12:M13
+  A14:A15
+  B14:B15
+  C14:C15
+  D14:D15
+  E14:E15
+  F14:F15
+  H14:H15
+  I14:I15
+  J14:J15
+  F12:F13
+  H12:H13
+  I12:I13
+  J12:J13
+  K12:K13
+  L12:L13
+  J10:J11
+  K10:K11
+  L10:L11
+  M10:M11
+  H18:H19
+  I18:I19
+  J18:J19
+  K18:K19
+  L18:L19
+  M18:M19
+  A18:A19
+  B18:B19
+  C18:C19
+  D18:D19
+  E18:E19
+  F18:F19
+  K14:K15
+  L14:L15
+  M14:M15
+  H16:H17
+  I16:I17
+  J16:J17
+  K16:K17
+  L16:L17
+  M16:M17
+  A22:E22
+  H22:L22
+  A23:E23
+  ... and 5535 more
+
+--- Non-empty cells (rows 1-35) ---
+  A1: ASECNA DELEGATION DU GABON
+  H1: ASECNA DELEGATION DU GABON
+  A2: Activités Aéronautiques Nationales du Gabon
+  H2: Activités Aéronautiques Nationales du Gabon
+  A3: Administration Générale et Finances (AGF)
+  H3: Administration Générale et Finances (AGF)
+  A4: Unité Budget et Facturation
+  H4: Unité Budget et Facturation
+  A6: [RichText]  Bordereau N°: 045
+  H6: [RichText]  Bordereau N°: 006
+  A7: EXERCICE: 2015
+  H7:  EXERCICE: 2025
+  A8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  B8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  C8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  D8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  E8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  F8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  G8: BORDEREAU D'EMISSION DE BANQUES D'ENREGISTREMENT
+  H8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  I8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  J8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  K8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  L8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  M8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  N8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  O8: BORDEREAU D'EMISSION DES CONVENTIONS DOMANIALES
+  A10: N° FACTURE
+  B10: DATE DE FACTURE
+  C10: CLIENT
+  D10: PERIODE
+  E10: SITE
+  F10: MONTANT FACTURE
+  G10: Imputation Budgétaire
+  H10: N° FACTURE
+  I10: DATE DE FACTURE
+  J10: CLIENT
+  K10: PERIODE
+  L10: SITE
+  M10: MONTANT FACTURE
+  N10: Imputation Budgétaire
+  O10: Imputation Budgétaire
+  A11: N° FACTURE
+  B11: DATE DE FACTURE
+  C11: CLIENT
+  D11: PERIODE
+  E11: SITE
+  F11: MONTANT FACTURE
+  G11: CL
+  H11: N° FACTURE
+  I11: DATE DE FACTURE
+  J11: CLIENT
+  K11: PERIODE
+  L11: SITE
+  M11: MONTANT FACTURE
+  N11: CL
+  O11: Montant
+  A12: 237
+  B12: [Date] 2015-08-12T00:00:00.000Z
+  C12: AFRIC AVIATION
+  D12: Du 01 au 09/08/2015
+  E12: MVENGUE
+  F12: 120000
+  G12: 719
+  H12: 0026
+  I12: [Date] 2025-06-17T00:00:00.000Z
+  J12: HELI UNION
+  K12: Du 01/01 au 31/12/2025
+  L12: PORT-GENTIL
+  M12: 46252500
+  N12: 719
+  A13: 237
+  B13: [Date] 2015-08-12T00:00:00.000Z
+  C13: AFRIC AVIATION
+  D13: Du 01 au 09/08/2015
+  E13: MVENGUE
+  F13: 120000
+  G13: 721
+  H13: 0026
+  I13: [Date] 2025-06-17T00:00:00.000Z
+  J13: HELI UNION
+  K13: Du 01/01 au 31/12/2025
+  L13: PORT-GENTIL
+  M13: 46252500
+  N13: 723
+  O13: [Formula] +M12-O12 = 46252500
+  A14: [Formula] +A12+1 = 238
+  B14: [Date] 2015-08-12T00:00:00.000Z
+  C14: LA NATIONALE
+  D14: Du 02 au 10/08/2016
+  E14: MVENGUE
+  F14: 90000
+  G14: 719
+  H14: 0027
+  I14: [Date] 2025-06-17T00:00:00.000Z
+  J14: EAGLE 
+  K14: Du 01/01 au 31/12/2025
+  L14: PORT-GENTIL
+  M14: 14875000
+  N14: 719
+  A15: [Formula] +A12+1 = 238
+  B15: [Date] 2015-08-12T00:00:00.000Z
+  C15: LA NATIONALE
+  D15: Du 02 au 10/08/2016
+  E15: MVENGUE
+  F15: 90000
+  G15: 721
+  H15: 0027
+  I15: [Date] 2025-06-17T00:00:00.000Z
+  J15: EAGLE 
+  K15: Du 01/01 au 31/12/2025
+  L15: PORT-GENTIL
+  M15: 14875000
+  N15: 723
+  O15: [Formula] +M14-O14 = 14875000
+  H16: 0028
+  I16: [Date] 2025-06-17T00:00:00.000Z
+  J16: [RichText] COREX INTERNATIONALE
+  K16: Du 01/01 au 31/12/2025
+  L16: PORT-GENTIL
+  M16: 27916900
+  N16: 719
+  H17: 0028
+  I17: [Date] 2025-06-17T00:00:00.000Z
+  J17: [RichText] COREX INTERNATIONALE
+  K17: Du 01/01 au 31/12/2025
+  L17: PORT-GENTIL
+  M17: 27916900
+  N17: 723
+  O17: [Formula] +M16-O16 = 27916900
+  G18: 719
+  H18: 0029
+  I18: [Date] 2025-06-17T00:00:00.000Z
+  J18: ART
+  K18: Du 01/01 au 31/12/2025
+  L18: PORT-GENTIL
+  M18: 21521960
+  N18: 719
+  A19: null
+  B19: null
+  C19: null
+  D19: null
+  E19: null
+  F19: null
+  G19: 721
+  H19: 0029
+  I19: [Date] 2025-06-17T00:00:00.000Z
+  J19: ART
+  K19: Du 01/01 au 31/12/2025
+  L19: PORT-GENTIL
+  M19: 21521960
+  N19: 723
+  O19: [Formula] +M18-O18 = 21521960
+  G20: 719
+  H20: 0030
+  I20: [Date] 2025-06-17T00:00:00.000Z
+  J20: BUSINESS BUREAU
+  K20: Du 01/01 au 31/12/2025
+  L20: PORT-GENTIL
+  M20: 1920000
+  N20: 719
+  A21: null
+  B21: null
+  C21: null
+  D21: null
+  E21: null
+  F21: null
+  G21: 721
+  H21: 0030
+  I21: [Date] 2025-06-17T00:00:00.000Z
+  J21: BUSINESS BUREAU
+  K21: Du 01/01 au 31/12/2025
+  L21: PORT-GENTIL
+  M21: 1920000
+  N21: 723
+  O21: [Formula] +M20-O20 = 1920000
+  A22: TOTAL BORDEREAU 
+  B22: TOTAL BORDEREAU 
+  C22: TOTAL BORDEREAU 
+  D22: TOTAL BORDEREAU 
+  E22: TOTAL BORDEREAU 
+  F22: [Formula] SUM(F12:F21) = 210000
+  H22: TOTAL BORDEREAU 
+  I22: TOTAL BORDEREAU 
+  J22: TOTAL BORDEREAU 
+  K22: TOTAL BORDEREAU 
+  L22: TOTAL BORDEREAU 
+  M22: [Formula] SUM(M12:M21) = 112486360
+  A23: CUMUL BORDEREAUX ANTERIEURS
+  B23: CUMUL BORDEREAUX ANTERIEURS
+  C23: CUMUL BORDEREAUX ANTERIEURS
+  D23: CUMUL BORDEREAUX ANTERIEURS
+  E23: CUMUL BORDEREAUX ANTERIEURS
+  F23: [Formula] +C37 = 610857841
+  H23: CUMUL BORDEREAUX ANTERIEURS
+  I23: CUMUL BORDEREAUX ANTERIEURS
+  J23: CUMUL BORDEREAUX ANTERIEURS
+  K23: CUMUL BORDEREAUX ANTERIEURS
+  L23: CUMUL BORDEREAUX ANTERIEURS
+  M23: 17057500
+  N23: PAX
+  A24: TOTAL BORDEREAUX CUMULES
+  B24: TOTAL BORDEREAUX CUMULES
+  C24: TOTAL BORDEREAUX CUMULES
+  D24: TOTAL BORDEREAUX CUMULES
+  E24: TOTAL BORDEREAUX CUMULES
+  F24: [Formula] SUM(F22:F23) = 611067841
+  H24: TOTAL BORDEREAUX CUMULES
+  I24: TOTAL BORDEREAUX CUMULES
+  J24: TOTAL BORDEREAUX CUMULES
+  K24: TOTAL BORDEREAUX CUMULES
+  L24: TOTAL BORDEREAUX CUMULES
+  M24: [Formula] SUM(M22:M23) = 129543860
+  A26: [RichText] Liquidé le présent bordereau à la somme de :   Deux cent dix  mille francs.CFA
+  H26: [RichText] Liquidé le présent bordereau à la somme de :Cent douze  millions quatre cent quatre-vingt-six mille trois cent soixante  francs.CFA
+  A28: Fait à Libreville, le
+  H28: Fait à Libreville, le
+  A30: SUIVI BUDGETAIRE
+  B30: SUIVI BUDGETAIRE
+  C30: SUIVI BUDGETAIRE
+  D30: SUIVI BUDGETAIRE
+  F30: L'ORDONNATEUR DELEGUE 
+  H30: SUIVI BUDGETAIRE
+  I30: SUIVI BUDGETAIRE
+  J30: SUIVI BUDGETAIRE
+  K30: SUIVI BUDGETAIRE
+  M30: L'ORDONNATEUR SECONDAIRE 
+  A31: CL
+  B31: Montant bordereau
+  C31: Cumul bordereau antérieur
+  D31: Cumul
+  H31: CL
+  I31: Montant bordereau
+  J31: Cumul bordereau antérieur
+  K31: Cumul
+  A32: 719
+  B32: 210000
+  C32: 28120000
+  D32: [Formula] +B32+C32 = 28330000
+  H32: 719
+  I32: [Formula] +O12+O14+O18+O20 = undefined
+  J32: 12720000
+  K32: [Formula] +I32+J32 = 12720000
+  A33: 721
+  C33: 36156092
+  D33: [Formula] +B33+C33 = 36156092
+  H33: 721
+  J33: 1505000
+  K33: [Formula] +I33+J33 = 1505000
+  A34: 722
+  C34: 224787287
+  D34: [Formula] +B34+C34 = 224787287
+  H34: 722
+  J34: 0
+  K34: [Formula] +I34+J34 = undefined
+  A35: 723
+  C35: 319828837
+  D35: [Formula] +B35+C35 = 319828837
+  F35: Jean PAMBO BOUASSA
+  H35: 723
+  I35: [Formula] +O13+O15+O19+O21+O17 = 112486360
+  J35: 2832500
+  K35: [Formula] +I35+J35 = 115318860
+  N35: null
+  O35: null

@@ -1,0 +1,19 @@
+node_modules/
+dist/
+release/
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+server/asecna.db
+server/history.json
+IDENTIFIANTS_ADMIN.txt
+test_output*.xlsx
+*.log
+
+# Fichiers temporaires de debug
+tmp_rovodev_*
+test_bc_gen.js
+ts_errors.txt
+analyze-*.mjs

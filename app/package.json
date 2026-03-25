@@ -1,0 +1,82 @@
+{
+  "name": "asecna-facturation",
+  "version": "1.0.0",
+  "description": "Application de génération de factures ASECNA",
+  "author": "ASECNA Délégation",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run dev:frontend\" --names \"BACK,FRONT\" --prefix-colors \"bgBlue.bold,bgMagenta.bold\"",
+    "dev:frontend": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server/standalone-commonjs.js",
+    "dev:all": "concurrently \"npm run dev:frontend\" \"npm run server\"",
+    "start:standalone": "node server/standalone.js",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"npm run dev:frontend\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:win": "npm run build && electron-builder --win --x64",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.asecna.facturation",
+    "productName": "ASECNA Facturation",
+    "asar": true,
+    "asarUnpack": [
+      "dist/**/*",
+      "public/**/*",
+      "server/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "public/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/ASECNA_logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ASECNA Facturation"
+    }
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "cors": "^2.8.6",
+    "docxtemplater": "^3.68.3",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.1",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.0",
+    "nodemailer": "^8.0.2",
+    "pizzip": "^3.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "concurrently": "^8.2.2",
+    "electron": "^40.6.1",
+    "electron-builder": "^26.8.1",
+    "pkg": "^5.8.1",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "wait-on": "^9.0.4"
+  }
+}

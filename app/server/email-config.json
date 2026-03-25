@@ -1,0 +1,10 @@
+{
+  "host": "smtp.gmail.com",
+  "port": 587,
+  "secure": false,
+  "auth": {
+    "user": "darelfloods@gmail.com",
+    "pass": "vexg uars wtft cawp"
+  },
+  "from": "ASECNA Facturation <darelfloods@gmail.com>"
+}

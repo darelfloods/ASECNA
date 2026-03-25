@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Analyse Excel</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h1>Analyse du fichier Excel</h1>
+    <div id="output"></div>
+    
+    <script>
+        async function analyzeExcel() {
+            const output = document.getElementById('output');
+            
+            try {
+                // Charger le fichier
+                const response = await fetch('/CONVENTIONS DOMANIALES ACTUALISEES 2025 (Enregistré automatiquement).xlsx');
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Lire avec XLSX
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheet = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[firstSheet];
+                
+                // Afficher les informations de base
+                output.innerHTML += `<h2>Feuille: ${firstSheet}</h2>`;
+                
+                // Obtenir la plage de cellules
+                const range = XLSX.utils.decode_range(sheet['!ref']);
+                output.innerHTML += `<p>Plage: ${sheet['!ref']} (${range.e.r + 1} lignes, ${range.e.c + 1} colonnes)</p>`;
+                
+                // Afficher les 10 premières lignes brutes
+                output.innerHTML += '<h3>Premières lignes brutes (cellules):</h3><pre>';
+                for (let row = 0; row <= Math.min(10, range.e.r); row++) {
+                    output.innerHTML += `\nLigne ${row + 1}: `;
+                    const cells = [];
+                    for (let col = 0; col <= range.e.c; col++) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                        const cell = sheet[cellAddress];
+                        cells.push(cell ? (cell.v || '(vide)') : '(null)');
+                    }
+                    output.innerHTML += JSON.stringify(cells);
+                }
+                output.innerHTML += '</pre>';
+                
+                // Lire comme JSON avec defval
+                const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                output.innerHTML += `<h3>Données JSON (${json.length} lignes):</h3>`;
+                
+                // Afficher les clés de la première ligne
+                if (json.length > 0) {
+                    output.innerHTML += '<h4>Clés trouvées:</h4><pre>';
+                    output.innerHTML += JSON.stringify(Object.keys(json[0]), null, 2);
+                    output.innerHTML += '</pre>';
+                    
+                    // Afficher les 3 premières lignes
+                    output.innerHTML += '<h4>3 premières lignes de données:</h4><pre>';
+                    output.innerHTML += JSON.stringify(json.slice(0, 3), null, 2);
+                    output.innerHTML += '</pre>';
+                }
+                
+            } catch (err) {
+                output.innerHTML += `<p style="color: red;">Erreur: ${err.message}</p>`;
+                console.error(err);
+            }
+        }
+        
+        analyzeExcel();
+    </script>
+</body>
+</html>
