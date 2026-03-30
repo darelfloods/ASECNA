@@ -76,7 +76,7 @@ function renderBonCommandeHtml(data: any, numero: string, logoSrc: string): stri
   <meta charset="UTF-8">
   <title>BON DE COMMANDE ${numero}</title>
   <style>
-    @page { size: A4 landscape; margin: 1.8cm 2cm; }
+    @page { size: B4 landscape; margin: 1.8cm 2cm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 8pt; color: #000; }
     table { border-collapse: collapse; width: 100%; }

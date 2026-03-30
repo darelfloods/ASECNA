@@ -217,78 +217,18 @@ export interface BonCommandeData {
  * Convertit le format de page B4 paysage → A4 paysage avec mise à l'échelle proportionnelle.
  * Ratio : 16838 / 20636 ≈ 0.8158
  */
-function fixPageFormatB4ToA4(xml: string): string {
-  const SCALE = 16838 / 20636; // ≈ 0.8158
-
-  // 1. Dimensions de page
-  xml = xml.replace(
-    /<w:pgSz w:w="20636" w:h="14570"/,
-    '<w:pgSz w:w="16838" w:h="11906"'
-  );
-
-  // 2. Marges de page (valeurs exactes du template B4)
-  xml = xml.replace(
-    /<w:pgMar w:top="720" w:right="720" w:bottom="510" w:left="720" w:header="680" w:footer="709" w:gutter="0"\/>/,
-    '<w:pgMar w:top="587" w:right="587" w:bottom="416" w:left="587" w:header="555" w:footer="578" w:gutter="0"/>'
-  );
-
-  // 3. Largeurs de colonnes gridCol
-  xml = xml.replace(
-    /(<w:gridCol w:w=")(\d+)(")/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-
-  // 4. Largeurs de cellules tcW type="dxa"
-  // IMPORTANT: une seule regex unifiée pour éviter le double-scaling
-  xml = xml.replace(
-    /(<w:tcW w:w=")(\d+)(" w:type="dxa"\/>)/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-
-  // 5. Largeurs de tables tblW type="dxa" (valeur non nulle uniquement)
-  xml = xml.replace(
-    /(<w:tblW w:w=")([1-9]\d*)(" w:type="dxa"\/>)/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-
-  // 6. Positions des tables flottantes tblpX et tblpY
-  xml = xml.replace(
-    /(w:tblpX=")(-?\d+)(")/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-  xml = xml.replace(
-    /(w:tblpY=")(-?\d+)(")/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-
-  // 7. Hauteurs des lignes de tableau (w:trHeight)
-  xml = xml.replace(
-    /(w:trHeight w:val=")(\d+)(")/g,
-    (_: string, pre: string, val: string, post: string) =>
-      `${pre}${Math.round(parseInt(val, 10) * SCALE)}${post}`
-  );
-
-  return xml;
-}
-
 /**
  * Génère un BON DE COMMANDE en remplissant le template Word
  */
 export async function generateBonCommande(data: BonCommandeData): Promise<Blob> {
-  const response = await fetch('/BON DE COMMANDE.docx');
-  if (!response.ok) throw new Error('Template BON DE COMMANDE.docx introuvable dans /public');
+  const response = await fetch('/BON DE COMMANDE A4.docx');
+  if (!response.ok) throw new Error('Template BON DE COMMANDE A4.docx introuvable dans /public');
   const templateBuffer = await response.arrayBuffer();
 
   const zip = new PizZip(templateBuffer);
   let documentXml = zip.file('word/document.xml')!.asText();
 
-  // Conversion B4 paysage → A4 paysage avec mise à l'échelle proportionnelle
-  documentXml = fixPageFormatB4ToA4(documentXml);
+  // On conserve le format B4 paysage d'origine du template (pas de conversion A4)
 
   const BOLD_RPR = '<w:rPr><w:b/><w:bCs/><w:color w:val="1F3864"/></w:rPr>';
 
@@ -514,12 +454,11 @@ export async function generateBonCommande(data: BonCommandeData): Promise<Blob> 
     // Paragraphe minimal (hauteur 0) pour ne pas perturber la mise en page
     const ZERO_PARA_OPEN = `<w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:rPr><w:sz w:val="2"/><w:szCs w:val="2"/></w:rPr></w:pPr><w:r><w:pict>`;
 
-    // Tampon 1 : cercle avec N° de série — positions mises à l'échelle A4 (×0.8167 vs B4)
-    // B4: margin-left:430pt margin-top:680pt → A4: 351pt / 555pt
+    // Tampon 1 : cercle avec N° de série — positions B4 d'origine
     const circularStamp =
       ZERO_PARA_OPEN +
       `<v:oval xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" ` +
-      `style="position:absolute;left:0;text-align:left;margin-left:351pt;margin-top:555pt;width:67pt;height:67pt;` +
+      `style="position:absolute;left:0;text-align:left;margin-left:430pt;margin-top:680pt;width:67pt;height:67pt;` +
       `z-index:251659264;visibility:visible;mso-wrap-style:square;` +
       `mso-position-horizontal-relative:page;mso-position-vertical-relative:page" ` +
       `strokecolor="#CC0000" strokeweight="1.5pt" o:allowoverlap="t" filled="f">` +
@@ -530,12 +469,11 @@ export async function generateBonCommande(data: BonCommandeData): Promise<Blob> 
       `</w:txbxContent></v:textbox></v:oval>` +
       `</w:pict></w:r></w:p>`;
 
-    // Tampon 2 : rectangle « APPROUVÉ » — positions mises à l'échelle A4
-    // B4: margin-left:375pt margin-top:755pt → A4: 306pt / 616pt
+    // Tampon 2 : rectangle « APPROUVÉ » — positions B4 d'origine
     const approvedStamp =
       ZERO_PARA_OPEN +
       `<v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" ` +
-      `style="position:absolute;left:0;text-align:left;margin-left:306pt;margin-top:616pt;width:132pt;height:46pt;` +
+      `style="position:absolute;left:0;text-align:left;margin-left:375pt;margin-top:755pt;width:132pt;height:46pt;` +
       `z-index:251659265;visibility:visible;mso-wrap-style:square;` +
       `mso-position-horizontal-relative:page;mso-position-vertical-relative:page;rotation:355" ` +
       `strokecolor="#CC0000" strokeweight="2.5pt" o:allowoverlap="t" filled="f">` +
@@ -761,23 +699,27 @@ export async function generateFicheMission(
     safeReplace(currentTransport, data.transport, 'Transport');
 
   } else {
-    // Format original (template Dorcas) : remplacement direct des valeurs connues du template
-    documentXml = replaceInXml(documentXml, 'Dorcas', data.nom, 'Nom');
-    documentXml = replaceInXml(documentXml, '1414', data.matricule, 'Matricule');
-    documentXml = replaceInXml(documentXml, 'kakinga', data.prenom, 'Prénom');
-    documentXml = replaceInXml(documentXml, 'Cadre Budget', data.emploi, 'Emploi');
+    // Format original : remplacement direct des valeurs connues du template
+    // Nom, Prénom, Matricule sur lignes séparées
+    documentXml = replaceInXml(documentXml, 'NDONG', data.nom, 'Nom');
+    documentXml = replaceInXml(documentXml, '250356', data.matricule, 'Matricule');
+    documentXml = replaceInXml(documentXml, 'ROBERT', data.prenom, 'Prénom');
+    // Emploi est vide dans le template, insertion après le label
+    if (data.emploi) {
+      documentXml = insertValueAfterLabel(documentXml, 'Emploi', data.emploi, 'Emploi');
+    }
     // Préfixe ": " pour éviter de remplacer "Libreville" dans le footer
     documentXml = replaceInXml(documentXml, ': Libreville', `: ${data.residence}`, 'Résidence');
     documentXml = replaceInXml(documentXml, 'Port-Gentil', data.destination, 'Destination');
-    documentXml = replaceInXml(documentXml, 'Control facturation', data.motif, 'Motif');
-    documentXml = replaceInXml(documentXml, '11/03/2026', data.dateDepart, 'Date départ');
-    documentXml = replaceInXml(documentXml, '15/03/2026', data.dateRetour, 'Date retour');
-    const dureeAffichee = (parseInt(data.duree, 10) + 1) || data.duree;
-    documentXml = replaceInXml(documentXml, '4 Jours', `${dureeAffichee} Jours`, 'Durée');
+    documentXml = replaceInXml(documentXml, 'Contrôle des occupation domaniale', data.motif, 'Motif');
+    // Date de départ et Retour sur lignes séparées
+    documentXml = replaceInXml(documentXml, '26/03/2026', data.dateDepart, 'Date départ');
+    documentXml = replaceInXml(documentXml, '30/03/2026', data.dateRetour, 'Date retour');
+    documentXml = replaceInXml(documentXml, '5 Jours', `${data.duree} Jours`, 'Durée');
     documentXml = replaceInXml(documentXml, 'Avion', data.transport, 'Transport');
 
     // Normaliser le formatage (supprimer gras/italique, uniformiser la taille)
-    for (const val of [data.nom, data.prenom, data.matricule, data.emploi, data.destination, data.motif, data.transport, data.dateDepart, data.dateRetour, `${dureeAffichee} Jours`]) {
+    for (const val of [data.nom, data.prenom, data.matricule, data.emploi, data.destination, data.motif, data.transport, data.dateDepart, data.dateRetour, `${data.duree} Jours`]) {
       if (val) documentXml = normalizeRunFormat(documentXml, val);
     }
   }

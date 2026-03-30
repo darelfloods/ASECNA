@@ -36,8 +36,8 @@ function calculateDuration(dateDepart: string, dateRetour: string): number | nul
     // Calculer la différence en millisecondes
     const diffMs = dateR.getTime() - dateD.getTime();
 
-    // Convertir en jours
-    const diffJours = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    // Convertir en jours (+1 car l'ASECNA compte le jour de départ)
+    const diffJours = Math.ceil(diffMs / (1000 * 60 * 60 * 24)) + 1;
 
     // Retourner null si la durée est négative ou nulle
     if (diffJours <= 0) {
