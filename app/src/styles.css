@@ -1369,14 +1369,30 @@ body {
   background: #FAFBFC;
 }
 
-/* === RESPONSIVE === */
-@media (max-width: 768px) {
+/* === HAMBURGER MOBILE === */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 1002;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* === RESPONSIVE TABLET === */
+@media (max-width: 1024px) {
   .sidebar {
     width: 70px;
   }
 
   .sidebar-logo-text,
-  .sidebar-nav-item span {
+  .sidebar-nav-item span,
+  .sidebar-user-info {
     display: none;
   }
 
@@ -1390,38 +1406,209 @@ body {
     padding: 0 20px;
   }
 
-  .header-title {
-    font-size: 14px;
-  }
-
   .app-container {
     width: calc(100% - 70px);
     margin: 84px 0 24px 70px;
     padding: 0 16px;
   }
 
+  .content-wrapper {
+    max-width: 100%;
+  }
+}
+
+/* === RESPONSIVE MOBILE === */
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 14px;
+    left: 12px;
+    z-index: 1100;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+  }
+
+  .hamburger-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .sidebar {
+    width: 240px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1050;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .sidebar-overlay.sidebar-overlay-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-logo-text,
+  .sidebar-user-info {
+    display: block;
+  }
+
+  .sidebar-nav-item span {
+    display: inline;
+  }
+
+  .sidebar-nav-item {
+    justify-content: flex-start;
+    padding: 12px 20px;
+  }
+
+  .institutional-header {
+    left: 0;
+    padding: 0 16px 0 56px;
+    grid-template-columns: 1fr auto;
+  }
+
+  .header-left {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .header-title {
+    font-size: 13px;
+  }
+
+  .header-buttons {
+    grid-column: 2;
+    gap: 6px;
+  }
+
+  .header-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .header-button-secondary svg + span,
+  .header-button svg + span {
+    display: none;
+  }
+
+  .app-container {
+    width: 100%;
+    margin: 80px 0 24px 0;
+    padding: 0 10px;
+  }
+
+  .content-wrapper {
+    max-width: 100%;
+    border-radius: 8px;
+    min-height: calc(100vh - 80px - 60px);
+  }
+
+  .welcome-header {
+    padding: 20px 16px;
+  }
+
+  .welcome-title {
+    font-size: 18px !important;
+  }
+
+  .welcome-subtitle {
+    font-size: 13px !important;
+  }
+
   .upload-section,
   .data-section,
   .actions-section {
-    padding: 24px 20px;
+    padding: 16px 12px;
   }
 
-  .dropzone {
-    padding: 40px 24px;
+  .dropzone,
+  .dropzone-compact {
+    padding: 24px 16px;
   }
 
   .actions-grid {
     grid-template-columns: 1fr;
   }
 
-  .content-wrapper {
-    min-height: calc(100vh - 64px - 108px);
+  /* Tables responsive */
+  .data-table-wrapper,
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .data-table th,
   .data-table td {
-    padding: 10px 12px;
-    font-size: 13px;
+    padding: 8px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Stepper mobile */
+  .stepper {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .stepper-step {
+    flex-direction: row !important;
+    gap: 8px !important;
+  }
+
+  .stepper-line {
+    display: none !important;
+  }
+
+  /* Footer */
+  .footer-bar {
+    padding: 12px 16px;
+    font-size: 11px;
+  }
+}
+
+/* === RESPONSIVE TRÈS PETIT ÉCRAN === */
+@media (max-width: 480px) {
+  .institutional-header {
+    height: 56px;
+    padding: 0 10px 0 50px;
+  }
+
+  .header-title {
+    font-size: 11px;
+  }
+
+  .header-buttons {
+    gap: 4px;
+  }
+
+  .header-button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .app-container {
+    margin-top: 72px;
+    padding: 0 6px;
+  }
+
+  .content-wrapper {
+    border-radius: 6px;
   }
 }
 

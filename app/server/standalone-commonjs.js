@@ -7,7 +7,9 @@ const nodemailer = require('nodemailer');
 const Database = require('better-sqlite3');
 
 // ── Base de données SQLite ────────────────────────────────────────────────────
-const DB_PATH = path.join(__dirname, 'asecna.db');
+const DB_PATH = process.env.NODE_ENV === 'production' && fs.existsSync('/data')
+  ? '/data/asecna.db'
+  : path.join(__dirname, 'asecna.db');
 const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
@@ -111,6 +113,49 @@ db.exec(`
   );
 `);
 
+// ── Table Utilisateurs ──────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    nom           TEXT NOT NULL,
+    prenom        TEXT NOT NULL,
+    passwordHash  TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'user',
+    status        TEXT NOT NULL DEFAULT 'pending',
+    matricule     TEXT,
+    service       TEXT,
+    approvedBy    TEXT,
+    approvedAt    TEXT,
+    lastLogin     TEXT,
+    createdAt     TEXT NOT NULL
+  );
+`);
+
+// Admin par défaut
+{
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@asecna.ga');
+  if (!existing) {
+    // Hash simple compatible avec le frontend
+    function hashPwd(password) {
+      let hash = 0;
+      for (let i = 0; i < password.length; i++) {
+        const char = password.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return 'hash_' + Math.abs(hash).toString(16) + '_' + password.length;
+    }
+    db.prepare(`INSERT INTO users (id, email, nom, prenom, passwordHash, role, status, matricule, service, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      'admin-001', 'admin@asecna.ga', 'ADMINISTRATEUR', 'ASECNA',
+      hashPwd('Admin@2024'), 'admin', 'approved', '000001', 'Direction Générale',
+      new Date().toISOString()
+    );
+    console.log('✅ Admin par défaut créé : admin@asecna.ga');
+  }
+}
+
 // Migration : ajout des colonnes adresse_compagnie / ville_compagnie si absentes
 try { db.prepare("ALTER TABLE factures_bandes ADD COLUMN adresse_compagnie TEXT DEFAULT ''").run(); } catch {}
 try { db.prepare("ALTER TABLE factures_bandes ADD COLUMN ville_compagnie TEXT DEFAULT ''").run(); } catch {}
@@ -163,6 +208,21 @@ if (fs.existsSync(LEGACY_DB)) {
 const EMAIL_CONFIG_FILE = path.join(__dirname, 'email-config.json');
 
 function getEmailConfig() {
+  // Priorité aux variables d'environnement (pour Railway/production)
+  if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    return {
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT || '587'),
+      secure: process.env.EMAIL_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      from: process.env.EMAIL_FROM || 'ASECNA Facturation <noreply@asecna.int>'
+    };
+  }
+  
+  // Fallback sur le fichier JSON (développement local)
   try {
     return JSON.parse(fs.readFileSync(EMAIL_CONFIG_FILE, 'utf8'));
   } catch { return null; }
@@ -682,6 +742,151 @@ app.get('/api/email-status', (req, res) => {
   res.json({ configured: isEmailConfigured(config) });
 });
 
+// ── Routes Utilisateurs (SQLite) ────────────────────────────────────────────
+
+function hashPwdServer(password) {
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return 'hash_' + Math.abs(hash).toString(16) + '_' + password.length;
+}
+
+// Inscription
+app.post('/api/auth/register', (req, res) => {
+  const { email, password, nom, prenom, matricule, service } = req.body;
+  if (!email || !password || !nom || !prenom) {
+    return res.status(400).json({ success: false, message: 'Champs obligatoires manquants' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ success: false, message: 'Le mot de passe doit contenir au moins 8 caractères' });
+  }
+  const emailLower = email.toLowerCase();
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(emailLower);
+  if (existing) {
+    return res.status(409).json({ success: false, message: 'Cet email est déjà utilisé' });
+  }
+  const id = 'user-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  const user = {
+    id, email: emailLower, nom: nom.toUpperCase(), prenom,
+    role: 'user', status: 'pending', matricule: matricule || null,
+    service: service || null, createdAt: new Date().toISOString()
+  };
+  db.prepare(`INSERT INTO users (id, email, nom, prenom, passwordHash, role, status, matricule, service, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    user.id, user.email, user.nom, user.prenom, hashPwdServer(password),
+    user.role, user.status, user.matricule, user.service, user.createdAt
+  );
+  res.json({ success: true, message: 'Inscription enregistrée. Votre compte sera activé après validation par un administrateur.', user });
+});
+
+// Connexion
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email et mot de passe requis' });
+  }
+  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
+  if (!row || row.passwordHash !== hashPwdServer(password)) {
+    return res.json({ success: false, message: 'Email ou mot de passe incorrect' });
+  }
+  if (row.status === 'pending') {
+    return res.json({ success: false, message: 'Votre compte est en attente de validation par un administrateur' });
+  }
+  if (row.status === 'rejected') {
+    return res.json({ success: false, message: "Votre demande d'inscription a été refusée" });
+  }
+  // Mettre à jour lastLogin
+  const now = new Date().toISOString();
+  db.prepare('UPDATE users SET lastLogin = ? WHERE id = ?').run(now, row.id);
+  const token = 'token_' + row.id + '_' + Date.now();
+  const { passwordHash, ...user } = { ...row, lastLogin: now };
+  res.json({ success: true, message: 'Connexion réussie', user, token });
+});
+
+// Liste des utilisateurs
+app.get('/api/auth/users', (req, res) => {
+  const rows = db.prepare('SELECT id, email, nom, prenom, role, status, matricule, service, approvedBy, approvedAt, lastLogin, createdAt FROM users ORDER BY createdAt DESC').all();
+  res.json({ success: true, users: rows });
+});
+
+// Approuver un utilisateur
+app.post('/api/auth/approve/:userId', (req, res) => {
+  const { userId } = req.params;
+  const { adminEmail } = req.body;
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+  const now = new Date().toISOString();
+  db.prepare('UPDATE users SET status = ?, approvedBy = ?, approvedAt = ? WHERE id = ?')
+    .run('approved', adminEmail || null, now, userId);
+  const updated = db.prepare('SELECT id, email, nom, prenom, role, status, matricule, service, approvedBy, approvedAt, lastLogin, createdAt FROM users WHERE id = ?').get(userId);
+  res.json({ success: true, message: `Utilisateur ${updated.prenom} ${updated.nom} approuvé`, user: updated });
+});
+
+// Rejeter un utilisateur
+app.post('/api/auth/reject/:userId', (req, res) => {
+  const { userId } = req.params;
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+  db.prepare('UPDATE users SET status = ? WHERE id = ?').run('rejected', userId);
+  const updated = db.prepare('SELECT id, email, nom, prenom, role, status, matricule, service, approvedBy, approvedAt, lastLogin, createdAt FROM users WHERE id = ?').get(userId);
+  res.json({ success: true, message: `Inscription de ${updated.prenom} ${updated.nom} refusée`, user: updated });
+});
+
+// Changer le rôle
+app.post('/api/auth/role/:userId', (req, res) => {
+  const { userId } = req.params;
+  const { role } = req.body;
+  if (!['admin', 'user', 'viewer'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Rôle invalide' });
+  }
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+  const updated = db.prepare('SELECT id, email, nom, prenom, role, status, matricule, service, approvedBy, approvedAt, lastLogin, createdAt FROM users WHERE id = ?').get(userId);
+  res.json({ success: true, message: `Rôle modifié`, user: updated });
+});
+
+// Supprimer un utilisateur
+app.delete('/api/auth/users/:userId', (req, res) => {
+  const { userId } = req.params;
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  res.json({ success: true, message: `Utilisateur ${row.prenom} ${row.nom} supprimé` });
+});
+
+// Changer le mot de passe
+app.post('/api/auth/change-password', (req, res) => {
+  const { email, currentPassword, newPassword } = req.body;
+  if (!email || !currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Paramètres manquants' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ success: false, message: 'Le nouveau mot de passe doit contenir au moins 8 caractères' });
+  }
+  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
+  if (!row || row.passwordHash !== hashPwdServer(currentPassword)) {
+    return res.json({ success: false, message: 'Mot de passe actuel incorrect' });
+  }
+  db.prepare('UPDATE users SET passwordHash = ? WHERE id = ?').run(hashPwdServer(newPassword), row.id);
+  res.json({ success: true, message: 'Mot de passe modifié avec succès' });
+});
+
+// Mettre à jour le profil
+app.put('/api/auth/profile/:userId', (req, res) => {
+  const { userId } = req.params;
+  const { nom, prenom, matricule, service } = req.body;
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!row) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+  db.prepare('UPDATE users SET nom = ?, prenom = ?, matricule = ?, service = ? WHERE id = ?')
+    .run(nom || row.nom, prenom || row.prenom, matricule || row.matricule, service || row.service, userId);
+  const updated = db.prepare('SELECT id, email, nom, prenom, role, status, matricule, service, approvedBy, approvedAt, lastLogin, createdAt FROM users WHERE id = ?').get(userId);
+  res.json({ success: true, message: 'Profil mis à jour', user: updated });
+});
+
 app.post('/api/send-approval-email', async (req, res) => {
   const { email, prenom, nom } = req.body;
 
@@ -790,13 +995,15 @@ if (isElectron && !isDev) {
 console.log('📁 Chemin dist :', distPath);
 console.log('📁 Chemin public :', publicPath);
 
-app.use(express.static(distPath));
+app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true }));
+app.use(express.static(distPath, { maxAge: 0, etag: false }));
 app.use(express.static(publicPath));
 
 app.get('*', (req, res) => {
   if (!req.url.startsWith('/api')) {
     const indexPath = path.join(distPath, 'index.html');
     if (fs.existsSync(indexPath)) {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(indexPath);
     } else {
       res.status(404).send('index.html not found at: ' + indexPath);

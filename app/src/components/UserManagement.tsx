@@ -22,20 +22,22 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
 
+  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:3002/api' : '/api';
+
   useEffect(() => {
-    fetch('http://localhost:3002/api/email-status')
+    fetch(`${apiBase}/email-status`)
       .then(r => r.json())
       .then(d => setEmailConfigured(d.configured))
       .catch(() => setEmailConfigured(false));
   }, []);
 
-  const loadUsers = useCallback(() => {
+  const loadUsers = useCallback(async () => {
     if (viewMode === 'pending') {
-      setUsers(getPendingUsers());
+      setUsers(await getPendingUsers());
     } else {
-      setUsers(getAllUsers());
+      setUsers(await getAllUsers());
     }
-    setPendingCount(getPendingUsers().length);
+    setPendingCount((await getPendingUsers()).length);
   }, [viewMode]);
 
   useEffect(() => {
@@ -49,15 +51,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
   const handleApprove = async (userId: string) => {
     const userToApprove = users.find(u => u.id === userId);
-    const result = approveUser(userId);
+    const result = await approveUser(userId);
     if (result.success) {
       showMessage('success', result.message);
       loadUsers();
 
-      // Envoyer l'email de notification à l'utilisateur
       if (userToApprove) {
         try {
-          const response = await fetch('http://localhost:3002/api/send-approval-email', {
+          const response = await fetch(`${apiBase}/send-approval-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -81,9 +82,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleReject = (userId: string) => {
+  const handleReject = async (userId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir refuser cette inscription ?')) return;
-    const result = rejectUser(userId);
+    const result = await rejectUser(userId);
     if (result.success) {
       showMessage('success', result.message);
       loadUsers();
@@ -92,9 +93,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleRoleChange = (userId: string, newRole: User['role']) => {
+  const handleRoleChange = async (userId: string, newRole: User['role']) => {
     if (!confirm(`Changer le rôle de cet utilisateur en "${newRole === 'admin' ? 'Administrateur' : newRole === 'viewer' ? 'Lecteur' : 'Utilisateur'}" ?`)) return;
-    const result = changeUserRole(userId, newRole);
+    const result = await changeUserRole(userId, newRole);
     if (result.success) {
       showMessage('success', result.message);
       loadUsers();
@@ -103,9 +104,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     }
   };
 
-  const handleDelete = (userId: string) => {
+  const handleDelete = async (userId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.')) return;
-    const result = deleteUser(userId);
+    const result = await deleteUser(userId);
     if (result.success) {
       showMessage('success', result.message);
       loadUsers();

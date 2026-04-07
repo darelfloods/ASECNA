@@ -3,7 +3,9 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { generateSingleBandeInvoice, generateMultiBandesInvoices, type BandeFactureData } from '../bandesInvoiceGenerator';
 
-const API = 'http://localhost:3002/api';
+const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:3002/api'
+  : '/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,7 @@
-const API_BASE_URL = 'http://localhost:3002/api';
+// En production, l'API est sur le même domaine que le frontend
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3002/api'  // Développement local
+  : '/api';                       // Production (même serveur)
 
 export interface HistoryEntry {
   id?: number;

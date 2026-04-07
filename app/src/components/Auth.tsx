@@ -51,7 +51,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
 
     try {
       const credentials: LoginCredentials = { email, password };
-      const response: AuthResponse = login(credentials);
+      const response: AuthResponse = await login(credentials);
 
       if (response.success && response.user) {
         setSuccess('Connexion réussie ! Redirection...');
@@ -84,7 +84,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         service: service || undefined
       };
       
-      const response: AuthResponse = register(data);
+      const response: AuthResponse = await register(data);
 
       if (response.success) {
         setRegisteredEmail(email);

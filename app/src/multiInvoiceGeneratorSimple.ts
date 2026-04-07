@@ -934,6 +934,22 @@ async function generateInvoicesOnSheet(
     }
   }
 
+  // Configurer la zone d'impression et l'orientation selon le contenu
+  const usesRightBlock = nbConventions > 1;
+  const lastRow = FIRST_PAIR_START_ROW + (neededPairs - 1) * ROW_SPACING + LEFT_BLOCK_TEMPLATE.height - 1;
+  const lastCol = usesRightBlock ? "P" : "H";
+  sheet.pageSetup.printArea = `A1:${lastCol}${lastRow}`;
+
+  if (usesRightBlock) {
+    // 16 colonnes → paysage pour que ça tienne sur la page
+    sheet.pageSetup.orientation = "landscape";
+    sheet.pageSetup.scale = 65;
+  } else {
+    // 8 colonnes → portrait 85% comme le template
+    sheet.pageSetup.orientation = "portrait";
+    sheet.pageSetup.scale = 85;
+  }
+
   return invoiceNumber;
 }
 
@@ -1057,6 +1073,12 @@ async function precloneConventionsSheet(
     /<Relationship[^>]*Type="[^"]*calcChain[^"]*"[^>]*\/>/gi, ''
   );
 
+  // Supprimer les definedNames (print areas) cassées — ExcelJS les recréera correctement
+  newWbXml = newWbXml.replace(
+    /<definedName[^>]*name="_xlnm\.Print_Area"[^>]*>[^<]*<\/definedName>/gi, ''
+  );
+  newWbXml = newWbXml.replace(/<definedNames>\s*<\/definedNames>/gi, '');
+
   zip.file('xl/workbook.xml', newWbXml);
   zip.file('xl/_rels/workbook.xml.rels', newWbRelsXml);
   zip.file('[Content_Types].xml', ctXml);
@@ -1131,6 +1153,11 @@ export async function generateSingleInvoiceFile(
     row.hidden = true;
   }
 
+  // Zone d'impression : uniquement colonnes A-H, première paire
+  sheet.pageSetup.printArea = `A1:H${FIRST_PAIR_START_ROW + LEFT_BLOCK_TEMPLATE.height - 1}`;
+  sheet.pageSetup.orientation = "portrait";
+  sheet.pageSetup.scale = 85;
+
   // Écrire le buffer
   const excelJsRaw = await workbook.xlsx.writeBuffer({ useStyles: true });
   // Normaliser en ArrayBuffer pour compatibilité navigateur avec JSZip
@@ -1152,15 +1179,23 @@ export async function generateSingleInvoiceFile(
     if (genCtFile) {
       let genCtXml = await genCtFile.async('string');
       genCtXml = genCtXml.replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
+      // Ajouter l'extension bin pour les printerSettings si absente
+      if (!genCtXml.includes('Extension="bin"')) {
+        genCtXml = genCtXml.replace(
+          '<Default Extension="rels"',
+          '<Default Extension="bin" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.printerSettings"/><Default Extension="rels"'
+        );
+      }
       genZip.file('[Content_Types].xml', genCtXml);
     }
 
-    // Copier médias + printerSettings
+    // Supprimer printerSettings orphelins
+    for (const filename of Object.keys(genZip.files)) {
+      if (filename.startsWith("xl/printerSettings/")) genZip.remove(filename);
+    }
+    // Copier uniquement les médias
     for (const filename of Object.keys(origZip.files)) {
-      if (
-        (filename.startsWith("xl/media/") || filename.startsWith("xl/printerSettings/")) &&
-        origZip.file(filename) && !genZip.file(filename)
-      ) {
+      if (filename.startsWith("xl/media/") && origZip.file(filename) && !genZip.file(filename)) {
         genZip.file(filename, await origZip.file(filename)!.async("arraybuffer"));
       }
     }
@@ -1213,34 +1248,44 @@ export async function generateSingleInvoiceFile(
       ? await origZip.file(`xl/drawings/_rels/${vmlBaseName}.rels`)!.async("string")
       : null;
 
+    // printerSettings original
     const printerRelM  = convRelsXml
       ? convRelsXml.match(/<Relationship[^>]+Type="[^"]*printerSettings[^"]*"[^>]+>/i)
       : null;
-    const printerTarget = printerRelM
+    const origPrinterTargetS = printerRelM
       ? (printerRelM[0].match(/Target="([^"]+)"/i) || [])[1]
       : null;
+    const origPrinterFileS = origPrinterTargetS
+      ? `xl/${origPrinterTargetS.replace(/\.\.\//g, "").replace(/^\//, "")}`
+      : null;
+    const origPrinterBinS = origPrinterFileS && origZip.file(origPrinterFileS)
+      ? await origZip.file(origPrinterFileS)!.async("arraybuffer")
+      : null;
+    let printerCounterS = 0;
+    for (const f of Object.keys(origZip.files)) {
+      const m = f.match(/printerSettings(\d+)\.bin$/);
+      if (m) printerCounterS = Math.max(printerCounterS, parseInt(m[1]));
+    }
 
     const existingVmlNums = Object.keys(origZip.files)
       .map(f => { const m = f.match(/xl\/drawings\/vmlDrawing(\d+)\.vml$/); return m ? parseInt(m[1]) : 0; })
       .filter(Boolean);
     let vmlCounter = existingVmlNums.length > 0 ? Math.max(...existingVmlNums) : 3;
 
-    // Identifier la feuille du site (clone de Conventions) — ne PAS toucher les autres
-    const genWbXmlS = await genZip.file("xl/workbook.xml")!.async("string");
-    const genWbRelsXmlS = await genZip.file("xl/_rels/workbook.xml.rels")!.async("string");
-    const siteSheetFilesS = new Set<string>();
-    const escapedSiteS = siteName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const sheetRowS = genWbXmlS.match(new RegExp(`<sheet[^>]+name="${escapedSiteS}"[^>]+r:id="(rId\\d+)"`, "i"));
-    if (sheetRowS) {
-      const relS = genWbRelsXmlS.match(new RegExp(`Id="${sheetRowS[1]}"[^>]+Target="([^"]+)"`, "i"));
-      if (relS) siteSheetFilesS.add(`xl/${relS[1].replace(/^\//, "")}`);
-    }
-
-    for (const genName of [...siteSheetFilesS]) {
+    // Restaurer VML/rels/printerSettings pour TOUTES les feuilles du fichier généré
+    // ExcelJS supprime les rels, VML et printerSettings — on les recrée pour chaque feuille
+    for (const genName of Object.keys(genZip.files)) {
+      if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(genName)) continue;
       const genFile = genZip.file(genName);
       if (!genFile) continue;
 
       let genXml = await genFile.async("string");
+
+      // Lire l'orientation et le scale définis par ExcelJS
+      const existingPSS = genXml.match(/<pageSetup\b[^>]*\/?>/i)?.[0] || "";
+      const sOrient = existingPSS.match(/orientation="([^"]+)"/)?.[1] || "portrait";
+      const sScale = existingPSS.match(/scale="(\d+)"/)?.[1] || "85";
+
       let legacyDrawingHFTag: string | null = null;
       let pageSetupTag: string | null = null;
       let ridVml = "rId2";
@@ -1256,50 +1301,34 @@ export async function generateSingleInvoiceFile(
         genZip.file(`xl/drawings/vmlDrawing${newVmlNum}.vml`, updatedVml);
         if (vmlRelsContent) genZip.file(`xl/drawings/_rels/vmlDrawing${newVmlNum}.vml.rels`, vmlRelsContent);
 
-        const genRelFile = `xl/worksheets/_rels/${genName.split("/").pop()}.rels`;
-        const existingRels = genZip.file(genRelFile)
-          ? await genZip.file(genRelFile)!.async("string")
-          : null;
-
-        if (existingRels) {
-          // Aligner les r:id avec ceux attendus par le template
-          ridVml = templateLegacyDrawingRid || ridVml;
-          ridPrinter = templatePageSetupRid || ridPrinter;
-
-          let merged = existingRels;
-          // Retirer toute ancienne entrée printer/vml pour éviter chevauchement
-          merged = merged.replace(
-            /<Relationship\b[^>]*Type="[^"]*printerSettings[^"]*"[^>]*\/>/gi,
-            ""
-          );
-          merged = merged.replace(
-            /<Relationship\b[^>]*Type="[^"]*vmlDrawing[^"]*"[^>]*\/>/gi,
-            ""
-          );
-
-          const printerEntry = printerTarget
-            ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/>`
-            : "";
-          const vmlEntry = `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`;
-
-          merged = merged.replace(
-            "</Relationships>",
-            `${printerEntry}${vmlEntry}</Relationships>`
-          );
-          genZip.file(genRelFile, merged);
-        } else {
-          const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
-            + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
-            + (printerTarget ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/>` : "")
-            + `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`
-            + `</Relationships>`;
-          genZip.file(genRelFile, rels);
+        // Créer printerSettings dédié
+        let newPrinterTargetS: string | null = null;
+        if (origPrinterBinS) {
+          const pNum = ++printerCounterS;
+          genZip.file(`xl/printerSettings/printerSettings${pNum}.bin`, origPrinterBinS);
+          newPrinterTargetS = `../printerSettings/printerSettings${pNum}.bin`;
         }
 
+        ridVml = templateLegacyDrawingRid || ridVml;
+        ridPrinter = templatePageSetupRid || ridPrinter;
+
+        const genRelFile = `xl/worksheets/_rels/${genName.split("/").pop()}.rels`;
+
+        const printerEntry = newPrinterTargetS
+          ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${newPrinterTargetS}"/>`
+          : "";
+        const vmlEntry = `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`;
+
+        const freshRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
+          + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+          + printerEntry + vmlEntry
+          + `</Relationships>`;
+        genZip.file(genRelFile, freshRels);
+
         legacyDrawingHFTag = `<legacyDrawingHF r:id="${ridVml}"/>`;
-        pageSetupTag = printerTarget
-          ? `<pageSetup paperSize="9" scale="85" orientation="portrait" r:id="${ridPrinter}"/>`
-          : `<pageSetup paperSize="9" scale="85" orientation="portrait"/>`;
+        pageSetupTag = newPrinterTargetS
+          ? `<pageSetup paperSize="9" scale="${sScale}" orientation="${sOrient}" r:id="${ridPrinter}"/>`
+          : `<pageSetup paperSize="9" scale="${sScale}" orientation="${sOrient}"/>`;
       }
 
       // Supprimer les éléments existants et les réinsérer dans le bon ordre OOXML
@@ -1426,17 +1455,28 @@ export async function generateMultiInvoiceFile(
 
     // Supprimer calcChain.xml si présent (évite l'erreur de réparation Excel)
     if (genZip.file('xl/calcChain.xml')) genZip.remove('xl/calcChain.xml');
-    const genCtFile2 = genZip.file('[Content_Types].xml');
-    if (genCtFile2) {
-      let genCtXml2 = await genCtFile2.async('string');
-      genCtXml2 = genCtXml2.replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
-      genZip.file('[Content_Types].xml', genCtXml2);
+    let genCtXml2 = await genZip.file('[Content_Types].xml')!.async('string');
+    genCtXml2 = genCtXml2.replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
+    // Ajouter l'extension bin pour les printerSettings si absente
+    if (!genCtXml2.includes('Extension="bin"')) {
+      genCtXml2 = genCtXml2.replace(
+        '<Default Extension="rels"',
+        '<Default Extension="bin" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.printerSettings"/><Default Extension="rels"'
+      );
+    }
+    genZip.file('[Content_Types].xml', genCtXml2);
+
+    // 3a. Supprimer les printerSettings orphelins (non référencés = erreur Excel)
+    for (const filename of Object.keys(genZip.files)) {
+      if (filename.startsWith("xl/printerSettings/")) {
+        genZip.remove(filename);
+      }
     }
 
-    // 3a. Copier médias + printerSettings depuis le template original
+    // 3a-bis. Copier UNIQUEMENT les médias depuis le template original (pas les printerSettings)
     for (const filename of Object.keys(origZip.files)) {
       if (
-        (filename.startsWith("xl/media/") || filename.startsWith("xl/printerSettings/")) &&
+        filename.startsWith("xl/media/") &&
         origZip.file(filename) && !genZip.file(filename)
       ) {
         genZip.file(filename, await origZip.file(filename)!.async("arraybuffer"));
@@ -1497,13 +1537,25 @@ export async function generateMultiInvoiceFile(
     const templatePageSetupRid =
       convSheetXml.match(/<pageSetup\b[^>]*\br:id="(rId\d+)"[^>]*\/?>/i)?.[1] || null;
 
-    // printerSettings reference (rId1 dans les rels d'origine)
+    // printerSettings : copier le fichier binaire original pour chaque feuille de site
     const printerRelM   = convRelsXml
       ? convRelsXml.match(/<Relationship[^>]+Type="[^"]*printerSettings[^"]*"[^>]+>/i)
       : null;
-    const printerTarget = printerRelM
+    const origPrinterTarget = printerRelM
       ? (printerRelM[0].match(/Target="([^"]+)"/i) || [])[1]
       : null; // e.g. "../printerSettings/printerSettings2.bin"
+    const origPrinterFile = origPrinterTarget
+      ? `xl/${origPrinterTarget.replace(/\.\.\//g, "").replace(/^\//, "")}`
+      : null;
+    const origPrinterBin = origPrinterFile && origZip.file(origPrinterFile)
+      ? await origZip.file(origPrinterFile)!.async("arraybuffer")
+      : null;
+    // Compteur pour les nouveaux printerSettings
+    let printerCounter = 0;
+    for (const f of Object.keys(origZip.files)) {
+      const m = f.match(/printerSettings(\d+)\.bin$/);
+      if (m) printerCounter = Math.max(printerCounter, parseInt(m[1]));
+    }
 
     // Trouver le compteur VML max déjà présent dans le template original
     const existingVmlNums = Object.keys(origZip.files)
@@ -1550,24 +1602,18 @@ export async function generateMultiInvoiceFile(
       return xml.replace("</worksheet>", tail + "</worksheet>");
     }
 
-    // 3c. Identifier les feuilles de SITE (clones de Conventions) — ne PAS toucher Bandes, BK, Recap
-    const genWbXml = await genZip.file("xl/workbook.xml")!.async("string");
-    const genWbRelsXml = await genZip.file("xl/_rels/workbook.xml.rels")!.async("string");
-    const siteSheetFiles = new Set<string>();
-    for (const site of siteNames) {
-      const escapedSite = site.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const sheetRow = genWbXml.match(new RegExp(`<sheet[^>]+name="${escapedSite}"[^>]+r:id="(rId\\d+)"`, "i"));
-      if (!sheetRow) continue;
-      const rel = genWbRelsXml.match(new RegExp(`Id="${sheetRow[1]}"[^>]+Target="([^"]+)"`, "i"));
-      if (rel) siteSheetFiles.add(`xl/${rel[1].replace(/^\//, "")}`);
-    }
-    console.log(`Phase 3c: feuilles site à traiter:`, [...siteSheetFiles]);
-
-    for (const genName of [...siteSheetFiles]) {
+    // 3c. Restaurer VML/rels/printerSettings pour TOUTES les feuilles
+    // ExcelJS supprime les rels, VML et printerSettings — on les recrée pour chaque feuille
+    for (const genName of Object.keys(genZip.files).filter(f => /^xl\/worksheets\/sheet\d+\.xml$/.test(f))) {
       const genFile = genZip.file(genName);
       if (!genFile) continue;
 
       let genXml = await genFile.async("string");
+
+      // Lire l'orientation et le scale définis par ExcelJS (respecter le choix dynamique)
+      const existingPS = genXml.match(/<pageSetup\b[^>]*\/?>/i)?.[0] || "";
+      const sheetOrientation = existingPS.match(/orientation="([^"]+)"/)?.[1] || "portrait";
+      const sheetScale = existingPS.match(/scale="(\d+)"/)?.[1] || "85";
 
       let ridVml     = "rId2";
       let ridPrinter = "rId1";
@@ -1580,6 +1626,15 @@ export async function generateMultiInvoiceFile(
         const newVmlFile = `xl/drawings/vmlDrawing${newVmlNum}.vml`;
         const newVmlRels = `xl/drawings/_rels/vmlDrawing${newVmlNum}.vml.rels`;
 
+        // Créer un printerSettings dédié pour cette feuille
+        let newPrinterTarget: string | null = null;
+        if (origPrinterBin) {
+          const newPrinterNum = ++printerCounter;
+          const newPrinterFile = `xl/printerSettings/printerSettings${newPrinterNum}.bin`;
+          genZip.file(newPrinterFile, origPrinterBin);
+          newPrinterTarget = `../printerSettings/printerSettings${newPrinterNum}.bin`;
+        }
+
         // Mettre à jour l'idmap et le spid pour ce numéro de feuille
         const newSpid = sheetNum * 1024 + 1;
         const updatedVml = vmlContent
@@ -1588,54 +1643,27 @@ export async function generateMultiInvoiceFile(
         genZip.file(newVmlFile, updatedVml);
         if (vmlRelsContent) genZip.file(newVmlRels, vmlRelsContent);
 
-        // Construire / fusionner le fichier rels sans conflit de rId
+        // Construire le fichier rels de la feuille (neuf, sans résidus)
         const genRelFile = `xl/worksheets/_rels/${genName.split("/").pop()}.rels`;
-        const existingGenRels = genZip.file(genRelFile)
-          ? await genZip.file(genRelFile)!.async("string")
-          : null;
 
-        if (existingGenRels) {
-          // On force les mêmes r:id que le template pour éviter les décalages
-          ridVml = templateLegacyDrawingRid || ridVml;
-          ridPrinter = templatePageSetupRid || ridPrinter;
+        ridVml = templateLegacyDrawingRid || ridVml;
+        ridPrinter = templatePageSetupRid || ridPrinter;
 
-          // Retirer toute ancienne entrée printer/vml pour éviter les conflits / chevauchements
-          let mergedRels = existingGenRels;
-          mergedRels = mergedRels.replace(
-            /<Relationship\b[^>]*Type="[^"]*printerSettings[^"]*"[^>]*\/>/gi,
-            ""
-          );
-          mergedRels = mergedRels.replace(
-            /<Relationship\b[^>]*Type="[^"]*vmlDrawing[^"]*"[^>]*\/>/gi,
-            ""
-          );
+        const printerEntry = newPrinterTarget
+          ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${newPrinterTarget}"/>`
+          : "";
+        const vmlEntry = `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`;
 
-          const printerEntry = printerTarget
-            ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/>`
-            : "";
-          const vmlEntry = `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`;
-
-          mergedRels = mergedRels.replace(
-            "</Relationships>",
-            `${printerEntry}${vmlEntry}</Relationships>`
-          );
-          genZip.file(genRelFile, mergedRels);
-        } else {
-          const printerEntry = printerTarget
-            ? `<Relationship Id="${ridPrinter}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings" Target="${printerTarget}"/>`
-            : "";
-          const newRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
-            + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
-            + printerEntry
-            + `<Relationship Id="${ridVml}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${newVmlNum}.vml"/>`
-            + `</Relationships>`;
-          genZip.file(genRelFile, newRels);
-        }
+        const freshRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n`
+          + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+          + printerEntry + vmlEntry
+          + `</Relationships>`;
+        genZip.file(genRelFile, freshRels);
 
         legacyDrawingHFTag = `<legacyDrawingHF r:id="${ridVml}"/>`;
-        pageSetupTag = printerTarget
-          ? `<pageSetup paperSize="9" scale="85" orientation="portrait" r:id="${ridPrinter}"/>`
-          : `<pageSetup paperSize="9" scale="85" orientation="portrait"/>`;
+        pageSetupTag = newPrinterTarget
+          ? `<pageSetup paperSize="9" scale="${sheetScale}" orientation="${sheetOrientation}" r:id="${ridPrinter}"/>`
+          : `<pageSetup paperSize="9" scale="${sheetScale}" orientation="${sheetOrientation}"/>`;
       }
 
       // Appliquer tous les éléments dans le bon ordre OOXML

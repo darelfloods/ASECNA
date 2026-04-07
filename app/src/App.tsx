@@ -286,12 +286,13 @@ const App: React.FC = () => {
   // firstInvoiceNumber est maintenant géré via formValues["N° ORDRE"]
   const [activeTab, setActiveTab] = useState<"dashboard" | "factures" | "fiches-mission" | "ordres-mission" | "bon-commande" | "historique" | "parametres" | "utilisateurs" | "bandes-enregistrement">("dashboard");
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Mettre à jour le compteur de demandes en attente
   useEffect(() => {
     if (isAuthenticated && currentUser?.role === 'admin') {
-      const updatePendingCount = () => {
-        setPendingUsersCount(getPendingUsers().length);
+      const updatePendingCount = async () => {
+        setPendingUsersCount((await getPendingUsers()).length);
       };
       updatePendingCount();
       // Rafraîchir toutes les 30 secondes
@@ -362,7 +363,7 @@ const App: React.FC = () => {
     try {
       const url = (item.hasDocument && item.id)
         ? getDocumentPreviewUrl(item.id)
-        : `http://localhost:3002/api/files/${encodeURIComponent(item.fileName)}/preview-html`;
+        : `${getFilePreviewUrl(item.fileName)}/preview-html`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -379,7 +380,7 @@ const App: React.FC = () => {
     const a = document.createElement('a');
     a.href = (item.hasDocument && item.id)
       ? getDocumentDownloadUrl(item.id)
-      : `http://localhost:3002/api/files/${encodeURIComponent(item.fileName)}/download`;
+      : `${getFilePreviewUrl(item.fileName)}/download`;
     a.download = item.fileName;
     document.body.appendChild(a);
     a.click();
@@ -1043,7 +1044,16 @@ const App: React.FC = () => {
 
   // Composant Sidebar
   const Sidebar = () => (
-    <div className="sidebar">
+    <>
+      <button className="hamburger-btn" onClick={() => setSidebarOpen(v => !v)} aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+          {sidebarOpen
+            ? <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
+            : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
+        </svg>
+      </button>
+      <div className={`sidebar-overlay ${sidebarOpen ? 'sidebar-overlay-visible' : ''}`} onClick={() => setSidebarOpen(false)} />
+    <div className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <div className="sidebar-logo">
         <div className="sidebar-logo-icon">
           <img src="/ASECNA_logo.png" alt="ASECNA Logo" />
@@ -1061,7 +1071,7 @@ const App: React.FC = () => {
       <nav className="sidebar-nav">
         <div
           className={`sidebar-nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-          onClick={() => setActiveTab("dashboard")}
+          onClick={() => { setActiveTab("dashboard"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7" />
@@ -1073,7 +1083,7 @@ const App: React.FC = () => {
         </div>
         <div
           className={`sidebar-nav-item ${activeTab === "factures" ? "active" : ""}`}
-          onClick={() => setActiveTab("factures")}
+          onClick={() => { setActiveTab("factures"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -1086,7 +1096,7 @@ const App: React.FC = () => {
         </div>
         <div
           className={`sidebar-nav-item ${activeTab === "fiches-mission" ? "active" : ""}`}
-          onClick={() => setActiveTab("fiches-mission")}
+          onClick={() => { setActiveTab("fiches-mission"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
@@ -1098,7 +1108,7 @@ const App: React.FC = () => {
         </div>
         <div
           className={`sidebar-nav-item ${activeTab === "ordres-mission" ? "active" : ""}`}
-          onClick={() => setActiveTab("ordres-mission")}
+          onClick={() => { setActiveTab("ordres-mission"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -1110,7 +1120,7 @@ const App: React.FC = () => {
         {/* Bons de commande masqués pour le MVP
         <div
           className={`sidebar-nav-item ${activeTab === "bon-commande" ? "active" : ""}`}
-          onClick={() => setActiveTab("bon-commande")}
+          onClick={() => { setActiveTab("bon-commande"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -1121,7 +1131,7 @@ const App: React.FC = () => {
         */}
         <div
           className={`sidebar-nav-item ${activeTab === "bandes-enregistrement" ? "active" : ""}`}
-          onClick={() => setActiveTab("bandes-enregistrement")}
+          onClick={() => { setActiveTab("bandes-enregistrement"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="7" width="20" height="10" rx="2" />
@@ -1132,7 +1142,7 @@ const App: React.FC = () => {
         </div>
         <div
           className={`sidebar-nav-item ${activeTab === "historique" ? "active" : ""}`}
-          onClick={() => setActiveTab("historique")}
+          onClick={() => { setActiveTab("historique"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" />
@@ -1144,7 +1154,7 @@ const App: React.FC = () => {
         {currentUser?.role === 'admin' && (
           <div
             className={`sidebar-nav-item ${activeTab === "utilisateurs" ? "active" : ""}`}
-            onClick={() => setActiveTab("utilisateurs")}
+            onClick={() => { setActiveTab("utilisateurs"); setSidebarOpen(false); }}
           >
             <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -1160,7 +1170,7 @@ const App: React.FC = () => {
         )}
         <div
           className={`sidebar-nav-item ${activeTab === "parametres" ? "active" : ""}`}
-          onClick={() => setActiveTab("parametres")}
+          onClick={() => { setActiveTab("parametres"); setSidebarOpen(false); }}
         >
           <svg className="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="3" />
@@ -1181,6 +1191,7 @@ const App: React.FC = () => {
         </button>
       </div>
     </div>
+    </>
   );
 
   // Vue Fiches de Mission
@@ -3484,7 +3495,7 @@ const App: React.FC = () => {
                 <div className="context-shortcuts">
                   <button
                     className="shortcut-chip"
-                    onClick={() => setActiveTab("historique")}
+                    onClick={() => { setActiveTab("historique"); setSidebarOpen(false); }}
                     disabled={history.length === 0}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
