@@ -1,6 +1,10 @@
 {
   "rewrites": [
-    { "source": "/((?!api/|.*\\.html$|.*\\.txt$|.*\\.xml$|.*\\.png$|.*\\.jpg$|.*\\.ico$).*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
+    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/google92f4d92e0f734977.html", "destination": "/google92f4d92e0f734977.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
