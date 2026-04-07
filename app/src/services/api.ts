@@ -3,7 +3,7 @@ const API_BASE_URL = 'http://localhost:3002/api';
 export interface HistoryEntry {
   id?: number;
   date: string;
-  type: 'facture' | 'fiche-mission' | 'ordre-mission' | 'bon-commande';
+  type: 'facture' | 'fiche-mission' | 'ordre-mission' | 'bon-commande' | 'bandes-enregistrement';
   fileName: string;
   nbConventions: number;
   status: 'success' | 'error';

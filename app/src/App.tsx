@@ -684,7 +684,7 @@ const App: React.FC = () => {
     try {
       // Charger le modèle de facture
       const response = await fetch(
-        "/Facturation bandes d'enregistrements de 2026-V1.xlsx"
+        encodeURI("/Facturation bandes d'enregistrements de 2026-V1.xlsx")
       );
       if (!response.ok) {
         throw new Error("Modèle de facture introuvable");
@@ -2618,7 +2618,7 @@ const App: React.FC = () => {
                     try {
                       const { fillBonCommandeWord } = await import('./bonCommandeWordGenerator');
                       // Charger le template Word A4
-                      const response = await fetch('/BON DE COMMANDE A4.docx');
+                      const response = await fetch(encodeURI('/BON DE COMMANDE A4.docx'));
                       if (!response.ok) throw new Error('Impossible de charger le template Word');
                       const docxBuffer = await response.arrayBuffer();
 

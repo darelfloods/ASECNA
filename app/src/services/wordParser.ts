@@ -221,7 +221,7 @@ export interface BonCommandeData {
  * Génère un BON DE COMMANDE en remplissant le template Word
  */
 export async function generateBonCommande(data: BonCommandeData): Promise<Blob> {
-  const response = await fetch('/BON DE COMMANDE A4.docx');
+  const response = await fetch(encodeURI('/BON DE COMMANDE A4.docx'));
   if (!response.ok) throw new Error('Template BON DE COMMANDE A4.docx introuvable dans /public');
   const templateBuffer = await response.arrayBuffer();
 
@@ -513,7 +513,7 @@ export async function generateOrdreMission(
   numeroOrdre: string
 ): Promise<Blob> {
   // Charger le template
-  const response = await fetch('/ORDRE DE MISSION.docx');
+  const response = await fetch(encodeURI('/ORDRE DE MISSION.docx'));
   const templateBuffer = await response.arrayBuffer();
 
   const zip = new PizZip(templateBuffer);
@@ -552,7 +552,7 @@ async function generateWordFromTemplate(
   data: OrdreMissionData,
   numeroOrdre: string
 ): Promise<Blob> {
-  const response = await fetch('/ORDRE DE MISSION.docx');
+  const response = await fetch(encodeURI('/ORDRE DE MISSION.docx'));
   const templateBuffer = await response.arrayBuffer();
 
   const zip = new PizZip(templateBuffer);
@@ -629,7 +629,7 @@ export async function generateFicheMission(
 
   // Toujours utiliser le template officiel comme base (jamais le fichier importé)
   const templateFile = templateType === 'ndong' ? '/FICHE DE MISSION NDONG.docx' : '/FICHE DE MISSION.docx';
-  const response = await fetch(templateFile);
+  const response = await fetch(encodeURI(templateFile));
   const templateBuffer = await response.arrayBuffer();
 
   const zip = new PizZip(templateBuffer);
