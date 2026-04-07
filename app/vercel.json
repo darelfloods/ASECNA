@@ -1,9 +1,14 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
-    { "source": "/robots.txt", "destination": "/robots.txt" },
-    { "source": "/google92f4d92e0f734977.html", "destination": "/google92f4d92e0f734977.html" },
+    { "source": "/:path*.xlsx", "destination": "/:path*.xlsx" },
+    { "source": "/:path*.docx", "destination": "/:path*.docx" },
+    { "source": "/:path*.pdf", "destination": "/:path*.pdf" },
+    { "source": "/:path*.png", "destination": "/:path*.png" },
+    { "source": "/:path*.jpg", "destination": "/:path*.jpg" },
+    { "source": "/:path*.xml", "destination": "/:path*.xml" },
+    { "source": "/:path*.txt", "destination": "/:path*.txt" },
+    { "source": "/:path*.html", "destination": "/:path*.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

@@ -147,7 +147,10 @@ export async function generateSingleBandeInvoice(
   templatePath: string
 ): Promise<ArrayBuffer> {
   // Charger le template
-  const response = await fetch(templatePath);
+  const response = await fetch(encodeURI(templatePath));
+  if (!response.ok) throw new Error(`Impossible de charger le template: ${response.status}`);
+  const ct = response.headers.get('content-type') || '';
+  if (ct.includes('text/html')) throw new Error('Le template retourné est du HTML, pas un fichier Excel.');
   const arrayBuffer = await response.arrayBuffer();
 
   const JSZip = (await import('jszip')).default;
@@ -314,7 +317,10 @@ export async function generateMultiBandesInvoices(
   factures: BandeFactureData[],
   templatePath: string
 ): Promise<ArrayBuffer> {
-  const response = await fetch(templatePath);
+  const response = await fetch(encodeURI(templatePath));
+  if (!response.ok) throw new Error(`Impossible de charger le template: ${response.status}`);
+  const ct = response.headers.get('content-type') || '';
+  if (ct.includes('text/html')) throw new Error('Le template retourné est du HTML, pas un fichier Excel.');
   const templateBuffer = await response.arrayBuffer();
 
   const JSZip = (await import('jszip')).default;

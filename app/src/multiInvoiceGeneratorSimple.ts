@@ -1078,8 +1078,10 @@ export async function generateSingleInvoiceFile(
   // Charger le template
   let arrayBuffer: ArrayBuffer;
   if (typeof templateSource === 'string') {
-    const response = await fetch(templateSource);
+    const response = await fetch(encodeURI(templateSource));
     if (!response.ok) throw new Error(`Impossible de charger le template: ${response.status}`);
+    const ct = response.headers.get('content-type') || '';
+    if (ct.includes('text/html')) throw new Error('Le template retourné est du HTML, pas un fichier Excel. Vérifiez le chemin du template.');
     arrayBuffer = await response.arrayBuffer();
   } else {
     arrayBuffer = templateSource;
@@ -1130,7 +1132,7 @@ export async function generateSingleInvoiceFile(
   }
 
   // Écrire le buffer
-  const excelJsRaw = await workbook.xlsx.writeBuffer({ useStyles: true, useSharedStrings: true });
+  const excelJsRaw = await workbook.xlsx.writeBuffer({ useStyles: true });
   // Normaliser en ArrayBuffer pour compatibilité navigateur avec JSZip
   const excelJsBuffer = (excelJsRaw instanceof ArrayBuffer
     ? excelJsRaw
@@ -1318,10 +1320,12 @@ export async function generateMultiInvoiceFile(
   // Charger le template
   let arrayBuffer: ArrayBuffer;
   if (typeof templateSource === 'string') {
-    const response = await fetch(templateSource);
+    const response = await fetch(encodeURI(templateSource));
     if (!response.ok) {
       throw new Error(`Impossible de charger le template: ${response.status}`);
     }
+    const ct = response.headers.get('content-type') || '';
+    if (ct.includes('text/html')) throw new Error('Le template retourné est du HTML, pas un fichier Excel. Vérifiez le chemin du template.');
     arrayBuffer = await response.arrayBuffer();
   } else {
     arrayBuffer = templateSource;
@@ -1398,7 +1402,7 @@ export async function generateMultiInvoiceFile(
 
   // Phase 3 — JSZip post-processing : restaurer VML/en-têtes/marges
   // (ExcelJS supprime ces informations lors de l'écriture)
-  const excelJsRaw = await workbook.xlsx.writeBuffer({ useStyles: true, useSharedStrings: true });
+  const excelJsRaw = await workbook.xlsx.writeBuffer({ useStyles: true });
   // Normaliser en ArrayBuffer pour compatibilité navigateur avec JSZip
   const excelJsBuffer = (excelJsRaw instanceof ArrayBuffer
     ? excelJsRaw
