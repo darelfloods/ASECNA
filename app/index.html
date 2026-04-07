@@ -2,10 +2,67 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>ASECNA - Génération de facture</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- SEO Primary -->
+    <title>ASECNA Facturation — Génération de factures et documents administratifs</title>
+    <meta name="description" content="Application officielle ASECNA pour la génération de factures de bandes d'enregistrement, fiches de mission et ordres de mission. Gestion documentaire pour la navigation aérienne en Afrique." />
+    <meta name="keywords" content="ASECNA, facturation, factures, bandes enregistrement, navigation aérienne, fiche de mission, ordre de mission, Afrique, gestion documentaire, aéronautique" />
+    <meta name="author" content="ASECNA" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://asecna.vercel.app/" />
+
+    <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ASECNA Facturation — Gestion documentaire & facturation" />
+    <meta property="og:description" content="Générez vos factures de bandes d'enregistrement, fiches de mission et ordres de mission ASECNA en quelques clics." />
+    <meta property="og:url" content="https://asecna.vercel.app/" />
+    <meta property="og:site_name" content="ASECNA Facturation" />
+    <meta property="og:image" content="https://asecna.vercel.app/ASECNA_logo.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:locale" content="fr_FR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ASECNA Facturation — Gestion documentaire & facturation" />
+    <meta name="twitter:description" content="Générez vos factures de bandes d'enregistrement, fiches et ordres de mission ASECNA." />
+    <meta name="twitter:image" content="https://asecna.vercel.app/ASECNA_logo.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/ASECNA_logo.png" />
+    <link rel="apple-touch-icon" href="/ASECNA_logo.png" />
+
+    <!-- Structured Data JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ASECNA Facturation",
+      "url": "https://asecna.vercel.app",
+      "description": "Application de génération de factures de bandes d'enregistrement, fiches de mission et ordres de mission pour l'Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar (ASECNA).",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "fr",
+      "author": {
+        "@type": "Organization",
+        "name": "ASECNA",
+        "description": "Agence pour la Sécurité de la Navigation Aérienne en Afrique et à Madagascar",
+        "url": "https://asecna.vercel.app"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "XAF"
+      }
+    }
+    </script>
   </head>
   <body>
+    <noscript>
+      <h1>ASECNA Facturation</h1>
+      <p>Application de génération de factures de bandes d'enregistrement, fiches de mission et ordres de mission pour l'ASECNA. Veuillez activer JavaScript pour utiliser cette application.</p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
