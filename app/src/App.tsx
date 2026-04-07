@@ -2614,17 +2614,24 @@ const App: React.FC = () => {
                     setShowBonConfirm(false);
                     setBonCommandeStatus({ type: "generating" });
                     try {
-                      const { generateBonCommande } = await import('./services/wordParser');
+                      const { fillBonCommandeWord } = await import('./bonCommandeWordGenerator');
+                      // Charger le template Word A4
+                      const response = await fetch('/BON DE COMMANDE A4.docx');
+                      if (!response.ok) throw new Error('Impossible de charger le template Word');
+                      const docxBuffer = await response.arrayBuffer();
+
+                      // Calculer le montant total
                       const montantCalcule = bonCommandeData.lignes
                         .reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0)
                         .toLocaleString('fr-FR');
-                      const dataWithNumero = {
+
+                      // Remplir le template Word avec les données du formulaire
+                      const blob = await fillBonCommandeWord(docxBuffer, {
                         ...bonCommandeData,
-                        montantTotalChiffres: montantCalcule,
-                        numeroEngagement: bonCommandeData.numeroEngagement || bonNumero,
                         numeroBon: bonNumero,
-                      };
-                      const blob = await generateBonCommande(dataWithNumero);
+                        montantTotalChiffres: montantCalcule,
+                      } as any);
+
                       const fournisseur = bonCommandeData.fournisseurNom.trim() || 'Fournisseur';
                       const dateStr = new Date().toISOString().slice(0, 10);
                       saveAs(blob, `Bon_Commande_${bonNumero}_${fournisseur}_${dateStr}.docx`);

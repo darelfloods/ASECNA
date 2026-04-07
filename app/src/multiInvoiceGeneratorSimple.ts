@@ -1049,6 +1049,14 @@ async function precloneConventionsSheet(
     }
   }
 
+  // Supprimer calcChain.xml qui référence des formules/feuilles potentiellement supprimées
+  if (zip.file('xl/calcChain.xml')) zip.remove('xl/calcChain.xml');
+  ctXml = ctXml.replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
+  // Retirer la relation calcChain dans workbook.xml.rels
+  newWbRelsXml = newWbRelsXml.replace(
+    /<Relationship[^>]*Type="[^"]*calcChain[^"]*"[^>]*\/>/gi, ''
+  );
+
   zip.file('xl/workbook.xml', newWbXml);
   zip.file('xl/_rels/workbook.xml.rels', newWbRelsXml);
   zip.file('[Content_Types].xml', ctXml);
@@ -1135,6 +1143,15 @@ export async function generateSingleInvoiceFile(
   try {
     const origZip = await JSZip.loadAsync(arrayBuffer.slice(0));
     const genZip  = await JSZip.loadAsync(excelJsBuffer);
+
+    // Supprimer calcChain.xml si présent (évite l'erreur de réparation Excel)
+    if (genZip.file('xl/calcChain.xml')) genZip.remove('xl/calcChain.xml');
+    const genCtFile = genZip.file('[Content_Types].xml');
+    if (genCtFile) {
+      let genCtXml = await genCtFile.async('string');
+      genCtXml = genCtXml.replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
+      genZip.file('[Content_Types].xml', genCtXml);
+    }
 
     // Copier médias + printerSettings
     for (const filename of Object.keys(origZip.files)) {
@@ -1393,6 +1410,15 @@ export async function generateMultiInvoiceFile(
   try {
     const origZip = await JSZip.loadAsync(arrayBuffer.slice(0));
     const genZip  = await JSZip.loadAsync(excelJsBuffer);
+
+    // Supprimer calcChain.xml si présent (évite l'erreur de réparation Excel)
+    if (genZip.file('xl/calcChain.xml')) genZip.remove('xl/calcChain.xml');
+    const genCtFile2 = genZip.file('[Content_Types].xml');
+    if (genCtFile2) {
+      let genCtXml2 = await genCtFile2.async('string');
+      genCtXml2 = genCtXml2.replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
+      genZip.file('[Content_Types].xml', genCtXml2);
+    }
 
     // 3a. Copier médias + printerSettings depuis le template original
     for (const filename of Object.keys(origZip.files)) {

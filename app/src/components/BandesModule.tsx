@@ -284,7 +284,7 @@ function SaisieForm({ onSaved, editFiche, onToast }: { onSaved: () => void; edit
 
   const dureeMin = calcDurationMinutes(f.heure_ouverture_arrivee, f.date_ouverture_arrivee, f.heure_cloture_arrivee, f.date_cloture_arrivee);
   const dureeH = roundToHalf(dureeMin);
-  const totalPax = (f.pax_arrives || 0) + (f.pax_departs || 0) + (f.pax_transit || 0);
+  const totalPax = (f.pax_arrives || 0) + (f.pax_transit || 0);
 
   const toggleBanque = (side: 'depart' | 'arrivee', n: number) => {
     const key = side === 'depart' ? 'banques_depart' : 'banques_arrivee';
@@ -412,43 +412,8 @@ function SaisieForm({ onSaved, editFiche, onToast }: { onSaved: () => void; edit
         </div>
       </div>
 
-      {/* Sections Départ / Arrivée */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        {/* DÉPART */}
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Départ</div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={S.label}>Banques utilisées (cliquer pour sélectionner)</label>
-            <BanqueGrid side="depart" />
-            <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
-              {f.banques_depart.length > 0 ? `Sélectionné : ${f.banques_depart.join(', ')} (${f.banques_depart.length} banque${f.banques_depart.length > 1 ? 's' : ''})` : 'Aucune banque sélectionnée'}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <label style={S.label}>Heure d'ouverture</label>
-              <input style={S.input} type="time" value={f.heure_ouverture_depart} onChange={e => set('heure_ouverture_depart', e.target.value)} />
-            </div>
-            <div>
-              <label style={S.label}>Date d'ouverture</label>
-              <input style={S.input} type="date" value={f.date_ouverture_depart} onChange={e => set('date_ouverture_depart', e.target.value)} />
-            </div>
-            <div>
-              <label style={S.label}>Heure de clôture</label>
-              <input style={S.input} type="time" value={f.heure_cloture_depart} onChange={e => set('heure_cloture_depart', e.target.value)} />
-            </div>
-            <div>
-              <label style={S.label}>Date de clôture</label>
-              <input style={S.input} type="date" value={f.date_cloture_depart} onChange={e => set('date_cloture_depart', e.target.value)} />
-            </div>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <label style={S.label}>Pax prévus départ</label>
-            <input style={S.input} type="number" min="0" value={f.pax_prevu_depart || ''} onChange={e => set('pax_prevu_depart', parseInt(e.target.value) || 0)} />
-          </div>
-        </div>
-
-        {/* ARRIVÉE */}
+      {/* Section Arrivée */}
+      <div>
         <div style={S.section}>
           <div style={S.sectionTitle}>Arrivée</div>
           <div style={{ marginBottom: 10 }}>
@@ -487,14 +452,10 @@ function SaisieForm({ onSaved, editFiche, onToast }: { onSaved: () => void; edit
             ) : <div style={{ color: '#94A3B8', fontSize: 13 }}>Saisir les heures pour calculer</div>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <div>
               <label style={S.label}>PAX Arrivée</label>
               <input style={S.input} type="number" min="0" value={f.pax_arrives || ''} onChange={e => set('pax_arrives', parseInt(e.target.value) || 0)} />
-            </div>
-            <div>
-              <label style={S.label}>PAX Départ</label>
-              <input style={S.input} type="number" min="0" value={f.pax_departs || ''} onChange={e => set('pax_departs', parseInt(e.target.value) || 0)} />
             </div>
             <div>
               <label style={S.label}>Transit</label>
@@ -744,7 +705,7 @@ async function generateFactureExcel(facture: Facture) {
 function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fiches: Fiche[]; onSaved: () => void }) {
   const selectedFiches = fiches.filter(f => ficheIds.includes(f.id));
   const totalH = selectedFiches.reduce((s, f) => s + (f.duree_heures_decimal || 0), 0);
-  const totalPax = selectedFiches.reduce((s, f) => s + (f.pax_arrives || 0) + (f.pax_departs || 0) + (f.pax_transit || 0), 0);
+  const totalPax = selectedFiches.reduce((s, f) => s + (f.pax_arrives || 0) + (f.pax_transit || 0), 0);
   const defaultSite = selectedFiches[0]?.site || '';
   const defaultComp = selectedFiches[0]?.compagnie_assistee || '';
 
@@ -1016,7 +977,7 @@ function FacturationMultiCompaniesForm({
       const [compagnie, site] = key.split('__');
       const totalH = arr.reduce((s, f) => s + (f.duree_heures_decimal || 0), 0);
       const nombre_heures = Math.round(totalH * 2) / 2;
-      const totalPax = arr.reduce((s, f) => s + (f.pax_arrives || 0) + (f.pax_departs || 0) + (f.pax_transit || 0), 0);
+      const totalPax = arr.reduce((s, f) => s + (f.pax_arrives || 0) + (f.pax_transit || 0), 0);
       return {
         compagnie,
         site,

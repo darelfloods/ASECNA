@@ -703,11 +703,18 @@ app.post('/api/send-approval-email', async (req, res) => {
   try {
     const transporter = nodemailer.createTransport({
       host: config.host, port: config.port, secure: config.secure,
-      auth: { user: config.auth.user, pass: config.auth.pass }
+      auth: { user: config.auth.user, pass: config.auth.pass },
+      tls: { rejectUnauthorized: false },
+      pool: false,
+      maxConnections: 1,
+      greetingTimeout: 15000,
+      socketTimeout: 30000
     });
 
     const logoPath = path.join(__dirname, '../public/ASECNA_logo.png');
     const hasLogo  = fs.existsSync(logoPath);
+
+    const textContent = `Bonjour ${prenom} ${nom},\n\nNous avons le plaisir de vous informer que votre compte ASECNA Facturation a été validé par un administrateur.\n\nVous pouvez maintenant vous connecter à l'application avec votre adresse email et votre mot de passe.\n\nSi vous rencontrez des difficultés pour vous connecter, veuillez contacter votre administrateur.\n\nCordialement,\nL'équipe ASECNA — Service Budget et Facturation`;
 
     const html = `
 <!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
@@ -745,9 +752,15 @@ app.post('/api/send-approval-email', async (req, res) => {
 
     await transporter.sendMail({
       from: config.from,
+      replyTo: config.auth.user,
       to: email,
       subject: 'Votre compte ASECNA Facturation a été activé',
+      text: textContent,
       html,
+      headers: {
+        'X-Mailer': 'ASECNA Facturation',
+        'Precedence': 'bulk'
+      },
       attachments: hasLogo ? [{ filename: 'ASECNA_logo.png', path: logoPath, cid: 'asecna-logo' }] : []
     });
 

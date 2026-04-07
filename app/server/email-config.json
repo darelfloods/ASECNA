@@ -1,10 +1,10 @@
 {
-  "host": "smtp.gmail.com",
+  "host": "smtp-relay.brevo.com",
   "port": 587,
   "secure": false,
   "auth": {
-    "user": "darelfloods@gmail.com",
-    "pass": "vexg uars wtft cawp"
+    "user": "a68c5f001@smtp-brevo.com",
+    "pass": "xsmtpsib-52eb7a2837a8c5b909f8596d688708ef9d45f014651c8f09c2f750d6fc762682-O6lNXmVfz5yaM8Q8"
   },
   "from": "ASECNA Facturation <darelfloods@gmail.com>"
 }

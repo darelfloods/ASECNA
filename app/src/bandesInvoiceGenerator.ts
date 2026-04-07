@@ -75,11 +75,11 @@ function addSharedString(ssXml: string, value: string): { xml: string; index: nu
   // Chercher si la valeur existe déjà
   const escapedValue = escXml(value);
   const searchPattern = `<si><t>${escapedValue}</t></si>`;
-  
+
   // Compter les <si> existants pour déterminer le prochain index
   const allSi = [...ssXml.matchAll(/<si>/g)];
   const count = allSi.length;
-  
+
   // Chercher si déjà présent
   const existingIdx = ssXml.indexOf(searchPattern);
   if (existingIdx !== -1) {
@@ -88,20 +88,21 @@ function addSharedString(ssXml: string, value: string): { xml: string; index: nu
     const idx = [...before.matchAll(/<si>/g)].length;
     return { xml: ssXml, index: idx };
   }
-  
+
   // Ajouter la nouvelle chaîne avant </sst>
   const newSi = `<si><t>${escapedValue}</t></si>`;
+  // Utiliser un lookbehind négatif pour ne pas matcher "uniqueCount" quand on veut "count"
   const newXml = ssXml
-    .replace(/<sst([^>]*)count="(\d+)"([^>]*)>/, (m, p1, countStr, p3) => {
+    .replace(/(<sst[^>]*\b)count="(\d+)"/, (m, prefix, countStr) => {
       const newCount = parseInt(countStr) + 1;
-      return `<sst${p1}count="${newCount}"${p3}>`;
+      return `${prefix}count="${newCount}"`;
     })
-    .replace(/<sst([^>]*)uniqueCount="(\d+)"([^>]*)>/, (m, p1, countStr, p3) => {
+    .replace(/(<sst[^>]*)uniqueCount="(\d+)"/, (m, prefix, countStr) => {
       const newCount = parseInt(countStr) + 1;
-      return `<sst${p1}uniqueCount="${newCount}"${p3}>`;
+      return `${prefix}uniqueCount="${newCount}"`;
     })
     .replace('</sst>', newSi + '</sst>');
-  
+
   return { xml: newXml, index: count };
 }
 
@@ -253,14 +254,22 @@ export async function generateSingleBandeInvoice(
 
   // ── 9. Supprimer les feuilles inutiles du ZIP ────────────────────────────
   // Supprimer sheet1.xml (Bandes), sheet2.xml (Conventions), sheet4.xml (Recap)
-  // et leurs relations
+  // et leurs relations + calcChain qui référence des formules/feuilles supprimées
   ['xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml', 'xl/worksheets/sheet4.xml',
    'xl/worksheets/_rels/sheet1.xml.rels', 'xl/worksheets/_rels/sheet2.xml.rels',
-   'xl/worksheets/_rels/sheet4.xml.rels'].forEach(f => {
+   'xl/worksheets/_rels/sheet4.xml.rels',
+   'xl/calcChain.xml'].forEach(f => {
     if (zip.file(f)) zip.remove(f);
   });
 
-  // ── 10. Mettre à jour les fichiers dans le ZIP ───────────────────────────
+  // ── 10. Nettoyer Content_Types.xml : retirer les Override des fichiers supprimés
+  ctXml = ctXml
+    .replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet1\.xml"[^>]*\/>/g, '')
+    .replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet2\.xml"[^>]*\/>/g, '')
+    .replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet4\.xml"[^>]*\/>/g, '')
+    .replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
+
+  // ── 11. Mettre à jour les fichiers dans le ZIP ───────────────────────────
   zip.file('xl/worksheets/sheet3.xml', sheetXml);
   zip.file('xl/sharedStrings.xml', ssXml);
   zip.file('xl/workbook.xml', wbXml);
@@ -268,7 +277,7 @@ export async function generateSingleBandeInvoice(
   zip.file('[Content_Types].xml', ctXml);
 
   console.log('✅ Facture générée avec préservation complète du template');
-  return await zip.generateAsync({ type: 'arraybuffer' });
+  return await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
 
@@ -392,12 +401,20 @@ export async function generateMultiBandesInvoices(
   // XML de la feuille BK originale (sheet3.xml) — servira de template pour chaque feuille
   const bkTemplateXml = await zip.file('xl/worksheets/sheet3.xml')!.async('string');
 
-  // Supprimer les feuilles inutiles (Bandes, Conventions, Recap) du ZIP
+  // Supprimer les feuilles inutiles (Bandes, Conventions, Recap) + calcChain du ZIP
   ['xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml', 'xl/worksheets/sheet4.xml',
    'xl/worksheets/_rels/sheet1.xml.rels', 'xl/worksheets/_rels/sheet2.xml.rels',
-   'xl/worksheets/_rels/sheet4.xml.rels'].forEach(f => {
+   'xl/worksheets/_rels/sheet4.xml.rels',
+   'xl/calcChain.xml'].forEach(f => {
     if (zip.file(f)) zip.remove(f);
   });
+
+  // Nettoyer Content_Types.xml des feuilles supprimées
+  ctXml = ctXml
+    .replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet1\.xml"[^>]*\/>/g, '')
+    .replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet2\.xml"[^>]*\/>/g, '')
+    .replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet4\.xml"[^>]*\/>/g, '')
+    .replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/g, '');
 
   // Préparer les entrées pour workbook.xml et workbook.xml.rels
   const sheetEntries: string[] = [];
@@ -497,6 +514,8 @@ export async function generateMultiBandesInvoices(
   // Supprimer la feuille BK originale du ZIP (on a créé des copies)
   if (zip.file('xl/worksheets/sheet3.xml')) zip.remove('xl/worksheets/sheet3.xml');
   if (zip.file('xl/worksheets/_rels/sheet3.xml.rels')) zip.remove('xl/worksheets/_rels/sheet3.xml.rels');
+  // Retirer l'Override de sheet3.xml dans Content_Types
+  ctXml = ctXml.replace(/<Override[^>]*PartName="\/xl\/worksheets\/sheet3\.xml"[^>]*\/>/g, '');
 
   // Mettre à jour workbook.xml avec toutes les feuilles
   wbXml = wbXml.replace(/<sheets>[\s\S]*?<\/sheets>/,
@@ -529,5 +548,5 @@ export async function generateMultiBandesInvoices(
   zip.file('[Content_Types].xml', ctXml);
 
   console.log(`✅ Fichier multi-feuilles généré avec ${siteNames.length} feuille(s)`);
-  return await zip.generateAsync({ type: 'arraybuffer' });
+  return await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
