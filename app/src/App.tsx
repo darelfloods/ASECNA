@@ -1107,6 +1107,7 @@ const App: React.FC = () => {
           </svg>
           <span>Ordres de mission</span>
         </div>
+        {/* Bons de commande masqués pour le MVP
         <div
           className={`sidebar-nav-item ${activeTab === "bon-commande" ? "active" : ""}`}
           onClick={() => setActiveTab("bon-commande")}
@@ -1117,6 +1118,7 @@ const App: React.FC = () => {
           </svg>
           <span>Bons de commande</span>
         </div>
+        */}
         <div
           className={`sidebar-nav-item ${activeTab === "bandes-enregistrement" ? "active" : ""}`}
           onClick={() => setActiveTab("bandes-enregistrement")}
@@ -2798,7 +2800,7 @@ const App: React.FC = () => {
                   <option value="facture">Factures</option>
                   <option value="fiche-mission">Fiches de mission</option>
                   <option value="ordre-mission">Ordres de mission</option>
-                  <option value="bon-commande">Bons de commande</option>
+                  {/* <option value="bon-commande">Bons de commande</option> */}
                 </select>
               </div>
 

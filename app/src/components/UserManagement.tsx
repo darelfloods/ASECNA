@@ -132,7 +132,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
   const ROLE_TOOLTIPS: Record<User['role'], string> = {
     admin:  'Administrateur — Accès total.\nPeut gérer les utilisateurs, approuver les inscriptions et accéder à toutes les fonctionnalités.',
-    user:   'Utilisateur — Accès standard.\nPeut générer des documents (factures, missions, bons de commande) et consulter son historique.',
+    user:   'Utilisateur — Accès standard.\nPeut générer des documents (factures, missions) et consulter son historique.',
     viewer: 'Lecteur — Accès limité en lecture seule.\nPeut consulter l\'historique mais ne peut pas générer de documents.'
   };
 
