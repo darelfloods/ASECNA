@@ -702,7 +702,7 @@ async function generateFactureExcel(facture: Facture) {
 
 // ── Module C: Génération de facture ──────────────────────────────────────────
 
-function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fiches: Fiche[]; onSaved: () => void }) {
+function FacturationForm({ ficheIds, fiches, onSaved, onHistoryAdd }: { ficheIds: string[]; fiches: Fiche[]; onSaved: () => void; onHistoryAdd?: (fileName: string, action: string, nbConventions?: number) => void }) {
   const selectedFiches = fiches.filter(f => ficheIds.includes(f.id));
   const totalH = selectedFiches.reduce((s, f) => s + (f.duree_heures_decimal || 0), 0);
   const totalPax = selectedFiches.reduce((s, f) => s + (f.pax_arrives || 0) + (f.pax_transit || 0), 0);
@@ -800,7 +800,9 @@ function FacturationForm({ ficheIds, fiches, onSaved }: { ficheIds: string[]; fi
         total_heures, total_annonces, montant_ht, solde, montant_en_lettres,
         statut: 'brouillon',
       };
+      const excelFileName = `Facture-Bandes-${numero_facture_final}-${form.compagnie}.xlsx`;
       await generateFactureExcel(tempFacture);
+      onHistoryAdd?.(excelFileName, 'generate_facture_bandes');
       setToast('Fichier Excel généré');
     } catch (e) { setToast('Erreur génération Excel'); }
     setGeneratingExcel(false);
@@ -1175,7 +1177,7 @@ async function generateBordereauExcel(factures: Facture[]) {
   saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Bordereau-Bandes-${new Date().getFullYear()}.xlsx`);
 }
 
-function Bordereau() {
+function Bordereau({ onHistoryAdd }: { onHistoryAdd?: (fileName: string, action: string, nbConventions?: number) => void }) {
   const [factures, setFactures] = useState<Facture[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -1267,7 +1269,9 @@ function Bordereau() {
 
       const now = new Date();
       const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      saveAs(blob, `Factures-Bandes-${dateStr}.xlsx`);
+      const multiFName = `Factures-Bandes-${dateStr}.xlsx`;
+      saveAs(blob, multiFName);
+      onHistoryAdd?.(multiFName, 'generate_factures_bandes_multi', selected.size);
 
       setToast(`${selected.size} facture(s) générée(s) par site`);
       setSelected(new Set());
@@ -1315,7 +1319,10 @@ function Bordereau() {
         <div style={{ fontWeight: 700, fontSize: 16, color: '#1A2B4A' }}>
           Bordereau — {factures.length} facture(s) — Total : {fmt(total)} FCFA
         </div>
-        <button style={{ ...S.btn, ...S.btnSecondary }} onClick={() => generateBordereauExcel(factures)}>
+        <button style={{ ...S.btn, ...S.btnSecondary }} onClick={async () => {
+          await generateBordereauExcel(factures);
+          onHistoryAdd?.(`Bordereau-Bandes-${new Date().getFullYear()}.xlsx`, 'generate_bordereau_bandes', factures.length);
+        }}>
           📥 Générer Bordereau Excel
         </button>
       </div>
@@ -1376,7 +1383,7 @@ function Bordereau() {
 
 // ── Main BandesModule ─────────────────────────────────────────────────────────
 
-export function BandesModule() {
+export function BandesModule({ onHistoryAdd }: { onHistoryAdd?: (fileName: string, action: string, nbConventions?: number) => void }) {
   const [subTab, setSubTab] = useState<'saisie' | 'fiches' | 'facturation' | 'facturation_multi' | 'bordereau'>('saisie');
   const [editFiche, setEditFiche] = useState<Fiche | null>(null);
   const [ficheIdsToFacture, setFicheIdsToFacture] = useState<string[]>([]);
@@ -1445,9 +1452,9 @@ export function BandesModule() {
 
       {subTab === 'saisie' && <SaisieForm onSaved={handleSaved} editFiche={editFiche} onToast={setGlobalToast} />}
       {subTab === 'fiches' && <FichesList onEdit={handleEdit} onFacturer={handleFacturer} onFacturerByCompany={handleFacturerByCompany} onRefresh={refreshKey} />}
-      {subTab === 'facturation' && <FacturationForm ficheIds={ficheIdsToFacture} fiches={allFiches} onSaved={handleFactureSaved} />}
+      {subTab === 'facturation' && <FacturationForm ficheIds={ficheIdsToFacture} fiches={allFiches} onSaved={handleFactureSaved} onHistoryAdd={onHistoryAdd} />}
       {subTab === 'facturation_multi' && <FacturationMultiCompaniesForm ficheIds={ficheIdsToFacture} fiches={allFiches} onSaved={handleFactureSaved} />}
-      {subTab === 'bordereau' && <Bordereau />}
+      {subTab === 'bordereau' && <Bordereau onHistoryAdd={onHistoryAdd} />}
     </div>
   );
 }

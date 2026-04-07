@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://asecna.vercel.app/sitemap.xml
+Sitemap: https://asecna-gamma.vercel.app/sitemap.xml

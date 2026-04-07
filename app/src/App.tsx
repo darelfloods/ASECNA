@@ -227,7 +227,7 @@ const App: React.FC = () => {
   }
 
   function makeHistoryEntry(params: {
-    type: "facture" | "fiche-mission" | "ordre-mission" | "bon-commande";
+    type: "facture" | "fiche-mission" | "ordre-mission" | "bon-commande" | "bandes-enregistrement";
     fileName: string;
     nbConventions: number;
     status: "success" | "error";
@@ -2800,6 +2800,7 @@ const App: React.FC = () => {
                   <option value="facture">Factures</option>
                   <option value="fiche-mission">Fiches de mission</option>
                   <option value="ordre-mission">Ordres de mission</option>
+                  <option value="bandes-enregistrement">Bandes d'enregistrement</option>
                   {/* <option value="bon-commande">Bons de commande</option> */}
                 </select>
               </div>
@@ -2863,20 +2864,23 @@ const App: React.FC = () => {
                                   : item.action === "generate_facture" ? "Génération facture"
                                   : item.action === "generate_fiche_mission" ? "Génération fiche de mission"
                                   : item.action === "generate_ordre_mission" ? "Génération ordre de mission"
+                                  : item.action === "generate_facture_bandes" ? "Génération facture bandes"
+                                  : item.action === "generate_factures_bandes_multi" ? "Génération factures bandes (multi)"
+                                  : item.action === "generate_bordereau_bandes" ? "Génération bordereau bandes"
                                   : item.action}
                               </div>
                             ) : null}
                           </td>
                           <td>
                             <span style={{
-                              background: item.type === "facture" ? "#EFF6FF" : item.type === "fiche-mission" ? "#F0FDF4" : item.type === "bon-commande" ? "#FFF7ED" : "#FEF2F2",
-                              color: item.type === "facture" ? "#1E40AF" : item.type === "fiche-mission" ? "#166534" : item.type === "bon-commande" ? "#C2410C" : "#991B1B",
+                              background: item.type === "facture" ? "#EFF6FF" : item.type === "fiche-mission" ? "#F0FDF4" : item.type === "bon-commande" ? "#FFF7ED" : item.type === "bandes-enregistrement" ? "#FDF4FF" : "#FEF2F2",
+                              color: item.type === "facture" ? "#1E40AF" : item.type === "fiche-mission" ? "#166534" : item.type === "bon-commande" ? "#C2410C" : item.type === "bandes-enregistrement" ? "#7C3AED" : "#991B1B",
                               padding: "4px 10px",
                               borderRadius: "4px",
                               fontSize: "12px",
                               fontWeight: "500"
                             }}>
-                              {item.type === "facture" ? "Facture" : item.type === "fiche-mission" ? "Fiche de mission" : item.type === "bon-commande" ? "Bon de commande" : "Ordre de mission"}
+                              {item.type === "facture" ? "Facture" : item.type === "fiche-mission" ? "Fiche de mission" : item.type === "bon-commande" ? "Bon de commande" : item.type === "bandes-enregistrement" ? "Bandes d'enreg." : "Ordre de mission"}
                             </span>
                           </td>
                           <td>{item.fileName}</td>
@@ -3167,7 +3171,22 @@ const App: React.FC = () => {
                 Saisie des fiches, génération de factures et bordereau d'émission
               </p>
             </div>
-            <BandesModule />
+            <BandesModule onHistoryAdd={async (fileName: string, action: string, nbConventions?: number) => {
+              const entry = makeHistoryEntry({
+                type: "bandes-enregistrement",
+                fileName,
+                nbConventions: nbConventions ?? 1,
+                status: "success",
+                action,
+              });
+              if (apiAvailable) {
+                await addHistoryEntry(entry);
+                const updated = await getHistory(undefined, currentUser?.email, currentUser?.role);
+                setHistory(updated);
+              } else {
+                setHistory(prev => [{ ...entry, id: Date.now() }, ...prev]);
+              }
+            }} />
           </div>
         </div>
       </>
