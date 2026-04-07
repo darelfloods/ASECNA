@@ -1225,9 +1225,18 @@ export async function generateSingleInvoiceFile(
       .filter(Boolean);
     let vmlCounter = existingVmlNums.length > 0 ? Math.max(...existingVmlNums) : 3;
 
-    // Appliquer sur chaque feuille générée
-    for (const genName of Object.keys(genZip.files)) {
-      if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(genName)) continue;
+    // Identifier la feuille du site (clone de Conventions) — ne PAS toucher les autres
+    const genWbXmlS = await genZip.file("xl/workbook.xml")!.async("string");
+    const genWbRelsXmlS = await genZip.file("xl/_rels/workbook.xml.rels")!.async("string");
+    const siteSheetFilesS = new Set<string>();
+    const escapedSiteS = siteName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const sheetRowS = genWbXmlS.match(new RegExp(`<sheet[^>]+name="${escapedSiteS}"[^>]+r:id="(rId\\d+)"`, "i"));
+    if (sheetRowS) {
+      const relS = genWbRelsXmlS.match(new RegExp(`Id="${sheetRowS[1]}"[^>]+Target="([^"]+)"`, "i"));
+      if (relS) siteSheetFilesS.add(`xl/${relS[1].replace(/^\//, "")}`);
+    }
+
+    for (const genName of [...siteSheetFilesS]) {
       const genFile = genZip.file(genName);
       if (!genFile) continue;
 
@@ -1541,9 +1550,20 @@ export async function generateMultiInvoiceFile(
       return xml.replace("</worksheet>", tail + "</worksheet>");
     }
 
-    // 3c. Pour CHAQUE feuille générée : VML unique + rels unique + tags XML
-    for (const genName of Object.keys(genZip.files)) {
-      if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(genName)) continue;
+    // 3c. Identifier les feuilles de SITE (clones de Conventions) — ne PAS toucher Bandes, BK, Recap
+    const genWbXml = await genZip.file("xl/workbook.xml")!.async("string");
+    const genWbRelsXml = await genZip.file("xl/_rels/workbook.xml.rels")!.async("string");
+    const siteSheetFiles = new Set<string>();
+    for (const site of siteNames) {
+      const escapedSite = site.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const sheetRow = genWbXml.match(new RegExp(`<sheet[^>]+name="${escapedSite}"[^>]+r:id="(rId\\d+)"`, "i"));
+      if (!sheetRow) continue;
+      const rel = genWbRelsXml.match(new RegExp(`Id="${sheetRow[1]}"[^>]+Target="([^"]+)"`, "i"));
+      if (rel) siteSheetFiles.add(`xl/${rel[1].replace(/^\//, "")}`);
+    }
+    console.log(`Phase 3c: feuilles site à traiter:`, [...siteSheetFiles]);
+
+    for (const genName of [...siteSheetFiles]) {
       const genFile = genZip.file(genName);
       if (!genFile) continue;
 
